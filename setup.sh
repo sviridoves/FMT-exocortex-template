@@ -176,7 +176,7 @@ if $DRY_RUN; then
     echo "  2. Copy CLAUDE.md → $WORKSPACE_DIR/CLAUDE.md"
     echo "  3. Copy memory/*.md → $HOME/.claude/projects/$CLAUDE_PROJECT_SLUG/memory/"
     if ! $CORE_ONLY; then
-        echo "  4. Copy .claude/settings.local.json → $WORKSPACE_DIR/.claude/"
+        echo "  4. Copy .claude/settings.local.json → $WORKSPACE_DIR/.claude/ + register MCP servers via CLI"
         echo "  5. Install Strategist launchd agent (Extractor + Synchronizer = optional)"
     fi
     echo "  6. Create DS-strategy repo ($(if $CORE_ONLY; then echo "local only"; else echo "+ GitHub"; fi))"
@@ -280,6 +280,16 @@ else
     else
         echo "  WARN: settings.local.json not found in template, skipping."
     fi
+
+    # Register MCP servers via CLI (Claude Code requires `claude mcp add`, not just JSON config)
+    echo "  Adding MCP servers..."
+    cd "$WORKSPACE_DIR"
+    claude mcp add --transport http --scope project knowledge-mcp "https://knowledge-mcp.aisystant.workers.dev/mcp" 2>/dev/null && \
+        echo "  ✓ knowledge-mcp added" || \
+        echo "  ○ knowledge-mcp: add manually: claude mcp add --transport http knowledge-mcp https://knowledge-mcp.aisystant.workers.dev/mcp"
+    claude mcp add --transport http --scope project ddt "https://digital-twin-mcp.aisystant.workers.dev/mcp" 2>/dev/null && \
+        echo "  ✓ ddt added" || \
+        echo "  ○ ddt: add manually: claude mcp add --transport http ddt https://digital-twin-mcp.aisystant.workers.dev/mcp"
 fi
 
 # === 5. Install roles (autodiscovery via role.yaml) ===
