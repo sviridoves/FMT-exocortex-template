@@ -1,11 +1,11 @@
 ---
 name: iwe-rules-review
-description: "Еженедельное ревью операционных правил IWE (правило 14 — Эволюция системы). Запускается при Week Close."
+description: "Еженедельное ревью культуры работы IWE (элемент 14 — Эволюция системы). Запускается при Week Close."
 argument-hint: ""
 version: 1.0.0
 ---
 
-# Ревью операционных правил IWE
+# Ревью культуры работы IWE
 
 > **Триггер:** Week Close (автоматически) или вручную.
 > **Роль:** R1 Стратег.
@@ -16,7 +16,7 @@ version: 1.0.0
 
 ### 1. Загрузить правила
 
-Прочитать `PACK-digital-platform/pack/digital-platform/03-methods/DP.M.008-iwe-operating-rules.md` → §2 Реестр (14 правил).
+Прочитать `PACK-digital-platform/pack/digital-platform/03-methods/DP.M.008-iwe-operating-rules.md` → §2 Реестр (14 элементов культуры работы).
 
 ### 2. Три вопроса (по каждому правилу)
 
