@@ -16,6 +16,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - **Кроссплатформенное предотвращение сна** — `strategist.sh` и `scheduler.sh` автоматически блокируют засыпание: macOS `caffeinate -diu` / Linux `systemd-inhibit`. Флаг `-s` не используется — он игнорируется когда Optimized Battery Charging переключает профиль на батарею
 - **SETUP-GUIDE: инструкции wake+sleep** для macOS, Linux, Windows. Включая `pmset -b sleep 0` для ноутбуков и Charge Limit рекомендацию
 - **PLATFORM-COMPAT: sleep prevention** — документация кроссплатформенных ограничений
+- **Agent Workspace (optional, WP-176)** — `setup/optional/setup-agent-workspace.sh` создаёт отдельный репо для данных агентов. SETUP-GUIDE Этап 7 с осознанным описанием когда нужен/не нужен
+- **daily-report.sh conditional** — если DS-agent-workspace/.git существует → отчёты туда, иначе DS-strategy/current/ (обратная совместимость)
 
 ### Updated
 - docs/LEARNING-PATH, USE-CASES, SETUP-GUIDE, onboarding-guide — убран WeekReport
@@ -23,6 +25,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - synchronizer/scripts/templates/strategist.sh — ищет WeekPlan вместо WeekReport
 - README.md FAQ — обновлён вопрос про сон/выключение
 - install.sh — кроссплатформенные подсказки при установке
+- session-prep.md, note-review.md — ссылки на QA-отчёт: agent-workspace или DS-strategy
+- collectors.d/README.md — unsatisfied → agent-workspace path
 
 ## [0.15.2] — 2026-03-24
 
