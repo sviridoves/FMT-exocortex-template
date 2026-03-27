@@ -269,44 +269,97 @@ for f in "${UPDATED_FILES[@]}"; do
 done
 
 # === Step 5b: Re-substitute placeholders in new/updated files ===
-# After downloading from upstream, files contain {{PLACEHOLDERS}}
-# Detect current values from existing configured files
+# After downloading from upstream, files contain {{PLACEHOLDERS}}.
+# Read saved configuration from .exocortex.env (created by setup.sh).
 echo ""
 echo "Подстановка переменных..."
 
-# Try to detect WORKSPACE_DIR from existing CLAUDE.md
-DETECTED_WORKSPACE=""
-if [ -f "$WORKSPACE_DIR/CLAUDE.md" ]; then
-    # Look for workspace path patterns (e.g., ~/IWE or /Users/x/IWE)
-    DETECTED_WORKSPACE="$WORKSPACE_DIR"
-fi
+ENV_FILE="$SCRIPT_DIR/.exocortex.env"
 
-PLACEHOLDER_HIT=0
-for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
-    filepath="$SCRIPT_DIR/$f"
-    [ -f "$filepath" ] || continue
+if [ -f "$ENV_FILE" ]; then
+    # Validate: only KEY=VALUE lines allowed (no shell commands)
+    if grep -qE '^\s*(source|eval|exec|\.|`|;|\$\()' "$ENV_FILE" 2>/dev/null; then
+        echo "  ОШИБКА: .exocortex.env содержит недопустимые конструкции. Пропускаю подстановку."
+        echo "  Пересоздайте: bash setup.sh"
+    else
+        # Read variables safely (only simple KEY=VALUE)
+        while IFS='=' read -r key value; do
+            # Skip comments and empty lines
+            case "$key" in \#*|"") continue ;; esac
+            # Trim whitespace
+            key=$(echo "$key" | tr -d '[:space:]')
+            # Export for use below
+            declare "ENV_$key=$value"
+        done < "$ENV_FILE"
 
-    if grep -q '{{WORKSPACE_DIR}}' "$filepath" 2>/dev/null; then
-        if [ -n "$DETECTED_WORKSPACE" ]; then
-            sed_inplace "s|{{WORKSPACE_DIR}}|$DETECTED_WORKSPACE|g" "$filepath"
-            PLACEHOLDER_HIT=$((PLACEHOLDER_HIT + 1))
+        PLACEHOLDER_HIT=0
+        for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
+            filepath="$SCRIPT_DIR/$f"
+            [ -f "$filepath" ] || continue
+
+            if grep -q '{{[A-Z_]*}}' "$filepath" 2>/dev/null; then
+                sed_inplace \
+                    -e "s|{{GITHUB_USER}}|${ENV_GITHUB_USER:-}|g" \
+                    -e "s|{{EXOCORTEX_REPO}}|${ENV_EXOCORTEX_REPO:-}|g" \
+                    -e "s|{{WORKSPACE_DIR}}|${ENV_WORKSPACE_DIR:-}|g" \
+                    -e "s|{{CLAUDE_PATH}}|${ENV_CLAUDE_PATH:-}|g" \
+                    -e "s|{{CLAUDE_PROJECT_SLUG}}|${ENV_CLAUDE_PROJECT_SLUG:-}|g" \
+                    -e "s|{{TIMEZONE_HOUR}}|${ENV_TIMEZONE_HOUR:-}|g" \
+                    -e "s|{{TIMEZONE_DESC}}|${ENV_TIMEZONE_DESC:-}|g" \
+                    -e "s|{{HOME_DIR}}|${ENV_HOME_DIR:-$HOME}|g" \
+                    "$filepath"
+                PLACEHOLDER_HIT=$((PLACEHOLDER_HIT + 1))
+            fi
+
+            # Replace template repo name with user's repo name (skip UPSTREAM-CONST lines)
+            if [ -n "${ENV_EXOCORTEX_REPO:-}" ] && grep -q 'FMT-exocortex-template' "$filepath" 2>/dev/null; then
+                sed_inplace "/UPSTREAM-CONST/!s|FMT-exocortex-template|${ENV_EXOCORTEX_REPO}|g" "$filepath"
+            fi
+        done
+
+        if [ "$PLACEHOLDER_HIT" -gt 0 ]; then
+            echo "  Подставлено переменных в $PLACEHOLDER_HIT файлах."
         fi
     fi
-    if grep -q '{{HOME_DIR}}' "$filepath" 2>/dev/null; then
-        sed_inplace "s|{{HOME_DIR}}|$HOME|g" "$filepath"
-        PLACEHOLDER_HIT=$((PLACEHOLDER_HIT + 1))
-    fi
-done
+else
+    # No .exocortex.env — try to detect and generate (migration scenario С5)
+    echo "  ⚠ .exocortex.env не найден (установка до Ф0.5?)."
+    echo "  Попытка восстановления конфигурации..."
 
-if [ "$PLACEHOLDER_HIT" -gt 0 ]; then
-    echo "  Подставлено переменных в $PLACEHOLDER_HIT файлах."
+    DETECTED_WORKSPACE="$WORKSPACE_DIR"
+    DETECTED_REPO="$(basename "$SCRIPT_DIR")"
+
+    cat > "$ENV_FILE" <<ENVEOF
+# Exocortex configuration (auto-detected by update.sh — verify and fix values)
+GITHUB_USER=your-username
+EXOCORTEX_REPO=$DETECTED_REPO
+WORKSPACE_DIR=$DETECTED_WORKSPACE
+CLAUDE_PATH=$(command -v claude 2>/dev/null || echo '/opt/homebrew/bin/claude')
+CLAUDE_PROJECT_SLUG=$(echo "$DETECTED_WORKSPACE" | tr '/' '-')
+TIMEZONE_HOUR=4
+TIMEZONE_DESC=4:00 UTC
+HOME_DIR=$HOME
+ENVEOF
+    chmod 600 "$ENV_FILE"
+    echo "  Конфигурация восстановлена в $ENV_FILE"
+    echo "  ⚠ ПРОВЕРЬТЕ значения (особенно GITHUB_USER) и перезапустите: bash update.sh"
+
+    # Still substitute what we can (HOME_DIR and WORKSPACE_DIR)
+    for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
+        filepath="$SCRIPT_DIR/$f"
+        [ -f "$filepath" ] || continue
+        sed_inplace \
+            -e "s|{{WORKSPACE_DIR}}|$DETECTED_WORKSPACE|g" \
+            -e "s|{{HOME_DIR}}|$HOME|g" \
+            "$filepath" 2>/dev/null || true
+    done
 fi
 
 # Check remaining placeholders
 REMAINING=$(grep -rl '{{[A-Z_]*}}' "$SCRIPT_DIR" --include="*.md" --include="*.sh" --include="*.json" --include="*.yaml" --include="*.yml" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$REMAINING" -gt 0 ]; then
     echo "  ⚠ $REMAINING файлов содержат незаменённые переменные."
-    echo "  Для полной подстановки: bash setup.sh"
+    echo "  Проверьте .exocortex.env и перезапустите: bash update.sh"
 fi
 
 # === Step 6: Reinstall platform-space ===
@@ -354,6 +407,18 @@ if [ -d "$CLAUDE_MEMORY_DIR" ]; then
     fi
     echo "  ✓ memory/MEMORY.md — не тронут"
 fi
+
+# Propagate skills, hooks, rules to workspace if changed
+for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
+    case "$f" in .claude/skills/*|.claude/hooks/*|.claude/rules/*|.claude/settings.json)
+        src="$SCRIPT_DIR/$f"
+        dst="$WORKSPACE_DIR/$f"
+        mkdir -p "$(dirname "$dst")"
+        cp "$src" "$dst"
+        echo "  ✓ $f → workspace"
+        ;;
+    esac
+done
 
 # Reinstall roles if changed
 ROLES_CHANGED=false
