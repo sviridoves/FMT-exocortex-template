@@ -6,6 +6,9 @@ day_open:
   strategy_day: monday          # Day for strategizing session (monday..sunday)
   self_dev_slot: 1              # Slot number for self-development (always first by default)
   self_dev_missing_alert: true  # Explicitly say if no self-dev in today's plan
+  interactive: false            # false = Day Open одним блоком. true = промежуточные вопросы.
+  calendar_ids: []              # Calendar IDs to check. Empty = all available calendars.
+                                # Examples: ['primary', 'work@company.com', 'team-calendar-id@group']
 
 news:
   enabled: false                # Enable news digest at Day Open (requires WebSearch)
@@ -43,9 +46,6 @@ video:
 #     min_minutes: 30
 #   - category: content            # Or by category (content, dev, ops)
 #     min_count: 1
-
-# day_close:
-#   review_yesterday_close: false  # At Day Open, read yesterday's Close report
 
 pomodoro:
   work_minutes: 25
