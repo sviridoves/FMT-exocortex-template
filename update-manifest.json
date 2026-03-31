@@ -7,6 +7,8 @@
     {"path": ".claude/hooks/protocol-completion-reminder.sh"},
     {"path": ".claude/hooks/wakatime-heartbeat.sh"},
     {"path": ".claude/hooks/wp-gate-reminder.sh"},
+    {"path": ".claude/rules/distinctions.md", "desc": "Ключевые различения терминов IWE"},
+    {"path": ".claude/rules/formatting.md", "desc": "Правила форматирования ответов"},
     {"path": ".claude/settings.json"},
     {"path": ".claude/skills/archgate/SKILL.md"},
     {"path": ".claude/skills/day-open/SKILL.md"},
