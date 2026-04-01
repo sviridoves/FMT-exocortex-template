@@ -9,7 +9,7 @@
 
 - **HUB (личные планы):** /home/sviridov/IWE/DS-strategy/current/
 - **SPOKE (планы репо):** /home/sviridov/IWE/*/WORKPLAN.md
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **MEMORY:** ~/.claude/projects/-home-sviridov-IWE/memory/MEMORY.md
 
 ## Именование файлов в current/
 

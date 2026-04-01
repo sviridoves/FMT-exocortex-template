@@ -204,7 +204,7 @@ echo "  ✓ CLAUDE.md (3-way merge: ваши правки сохраняются
 echo "  ✓ extensions/ (ваши расширения протоколов)"
 echo "  ✓ params.yaml (ваши параметры)"
 echo "  ✓ .secrets/, .mcp.json (ключи и конфигурация)"
-echo "  ✓ .cline/settings.json (permissions)"
+echo "  ✓ .claude/settings.local.json (permissions)"
 echo "  ✓ personal/ (ваши файлы)"
 echo "  ✓ DS-strategy/ (ваше планирование)"
 echo ""
@@ -338,16 +338,18 @@ if [ -f "$ENV_FILE" ]; then
 
             if grep -q '{{[A-Z_]*}}' "$filepath" 2>/dev/null; then
                 sed_inplace \
-                    -e "s|sviridoves|${ENV_GITHUB_USER:-}|g" \
+                    -e "s|{{GITHUB_USER}}|${ENV_GITHUB_USER:-}|g" \
                     -e "s|{{EXOCORTEX_REPO}}|${ENV_EXOCORTEX_REPO:-}|g" \
-                    -e "s|/home/sviridov/IWE|${ENV_WORKSPACE_DIR:-}|g" \
-                    -e "s|{{CLAUDE_PATH}}|${ENV_CLINE_PATH:-}|g" \
-                    -e "s|{{CLAUDE_PROJECT_SLUG}}|${ENV_CLINE_PROJECT_SLUG:-}|g" \
-                    -e "s|{{CLINE_PATH}}|${ENV_CLINE_PATH:-}|g" \
-                    -e "s|{{CLINE_PROJECT_SLUG}}|${ENV_CLINE_PROJECT_SLUG:-}|g" \
-                    -e "s|5|${ENV_TIMEZONE_HOUR:-}|g" \
-                    -e "s|5:00 UTC|${ENV_TIMEZONE_DESC:-}|g" \
-                    -e "s|/home/sviridov|${ENV_HOME_DIR:-$HOME}|g" \
+                    -e "s|{{WORKSPACE_DIR}}|${ENV_WORKSPACE_DIR:-}|g" \
+                    -e "s|/usr/bin/cline|${ENV_CLAUDE_PATH:-}|g" \
+                    -e "s|-home-sviridov-IWE|${ENV_CLAUDE_PROJECT_SLUG:-}|g" \
+                    -e "s|{{TIMEZONE_HOUR}}|${ENV_TIMEZONE_HOUR:-}|g" \
+                    -e "s|{{TIMEZONE_DESC}}|${ENV_TIMEZONE_DESC:-}|g" \
+                    -e "s|{{HOME_DIR}}|${ENV_HOME_DIR:-$HOME}|g" \
+                    -e "s|{{KNOWLEDGE_MCP_PACKAGE}}|${ENV_KNOWLEDGE_MCP_PACKAGE:-@aisystant/knowledge-mcp}|g" \
+                    -e "s|{{KNOWLEDGE_MCP_DATABASE_URL}}|${ENV_KNOWLEDGE_MCP_DATABASE_URL:-}|g" \
+                    -e "s|{{DIGITAL_TWIN_MCP_PACKAGE}}|${ENV_DIGITAL_TWIN_MCP_PACKAGE:-@aisystant/digital-twin-mcp}|g" \
+                    -e "s|{{DIGITAL_TWIN_DATABASE_URL}}|${ENV_DIGITAL_TWIN_DATABASE_URL:-}|g" \
                     "$filepath"
                 PLACEHOLDER_HIT=$((PLACEHOLDER_HIT + 1))
             fi
@@ -405,8 +407,8 @@ else
 GITHUB_USER=your-username
 EXOCORTEX_REPO=$DETECTED_REPO
 WORKSPACE_DIR=$DETECTED_WORKSPACE
-CLINE_PATH=$(command -v cline 2>/dev/null || echo 'cline')
-CLINE_PROJECT_SLUG=$(echo "$DETECTED_WORKSPACE" | tr '/' '-')
+CLAUDE_PATH=$(command -v cline 2>/dev/null || echo 'cline')
+CLAUDE_PROJECT_SLUG=$(echo "$DETECTED_WORKSPACE" | tr '/' '-')
 TIMEZONE_HOUR=4
 TIMEZONE_DESC=4:00 UTC
 HOME_DIR=$HOME
@@ -488,23 +490,23 @@ done
 
 # Copy memory files to Claude projects directory
 CLAUDE_PROJECT_SLUG="$(echo "$WORKSPACE_DIR" | tr '/' '-')"
-CLINE_MEMORY_DIR="$HOME/.cline/memory"
+CLAUDE_MEMORY_DIR="$HOME/.claude/projects/$CLAUDE_PROJECT_SLUG/memory"
 
-if [ -d "$CLINE_MEMORY_DIR" ]; then
+if [ -d "$CLAUDE_MEMORY_DIR" ]; then
     MEM_UPDATED=0
     for f in "${NEW_FILES[@]}" "${UPDATED_FILES[@]}"; do
         case "$f" in
             memory/*.md)
                 fname=$(basename "$f")
                 if [ "$fname" != "MEMORY.md" ]; then
-                    cp "$SCRIPT_DIR/$f" "$CLINE_MEMORY_DIR/$fname"
+                    cp "$SCRIPT_DIR/$f" "$CLAUDE_MEMORY_DIR/$fname"
                     MEM_UPDATED=$((MEM_UPDATED + 1))
                 fi
                 ;;
         esac
     done
     if [ "$MEM_UPDATED" -gt 0 ]; then
-        echo "  ✓ $MEM_UPDATED memory-файлов обновлено в $CLINE_MEMORY_DIR"
+        echo "  ✓ $MEM_UPDATED memory-файлов обновлено в $CLAUDE_MEMORY_DIR"
     fi
     echo "  ✓ memory/MEMORY.md — не тронут"
 fi
@@ -551,7 +553,7 @@ if [ -f "$ENV_FILE" ] && [ -n "${ENV_WORKSPACE_DIR:-}" ] && [ -n "${ENV_EXOCORTE
     fi
 
     # Fix memory/ user files (MEMORY.md only — platform files are replaced above)
-    MEMORY_DIR="$HOME/.cline/memory"
+    MEMORY_DIR="$HOME/.claude/projects/$CLAUDE_PROJECT_SLUG/memory"
     if [ -d "$MEMORY_DIR" ] && [ -f "$MEMORY_DIR/MEMORY.md" ]; then
         if grep -q 'DS-exocortex' "$MEMORY_DIR/MEMORY.md" 2>/dev/null; then
             sed_inplace "/UPSTREAM-CONST/!s|FMT-exocortex-template|${ENV_EXOCORTEX_REPO}|g" "$MEMORY_DIR/MEMORY.md" 2>/dev/null

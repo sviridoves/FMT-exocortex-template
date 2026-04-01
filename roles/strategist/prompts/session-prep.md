@@ -9,7 +9,7 @@
 - **Inbox:** /home/sviridov/IWE/DS-strategy/inbox/ ([fleeting-notes.md](https://github.com/sviridoves/DS-strategy/blob/main/inbox/fleeting-notes.md) + свежие файлы за неделю)
 - **SPOKE (планы репо):** /home/sviridov/IWE/*/WORKPLAN.md
 - **Стратегические карты:** /home/sviridov/IWE/*/MAPSTRATEGIC.md (если есть в репо)
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **MEMORY:** ~/.claude/projects/-home-sviridov-IWE/memory/MEMORY.md
 
 ## Именование файлов в current/
 

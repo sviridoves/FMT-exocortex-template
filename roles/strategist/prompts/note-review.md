@@ -9,7 +9,7 @@
 - **Стратегия:** /home/sviridov/IWE/DS-strategy/docs/Strategy.md
 - **План недели:** /home/sviridov/IWE/DS-strategy/current/WeekPlan W*.md
 - **Inbox Экстрактора:** /home/sviridov/IWE/DS-strategy/inbox/captures.md
-- **MEMORY:** ~/.claude/projects/{{CLAUDE_PROJECT_SLUG}}/memory/MEMORY.md
+- **MEMORY:** ~/.claude/projects/-home-sviridov-IWE/memory/MEMORY.md
 
 ## Предусловие
 

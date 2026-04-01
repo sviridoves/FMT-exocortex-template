@@ -16,7 +16,7 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 WORKSPACE="/home/sviridov/IWE"
 PROMPTS_DIR="$REPO_DIR/prompts"
 LOG_DIR="/home/sviridov/logs/extractor"
-CLAUDE_PATH="{{CLAUDE_PATH}}"
+CLAUDE_PATH="/usr/bin/cline"
 ENV_FILE="/home/sviridov/.config/aist/env"
 
 # AI CLI: переопределение через переменные окружения (см. strategist.sh)

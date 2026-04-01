@@ -116,13 +116,13 @@ else
     check_command "gh" "GitHub CLI" "brew install gh"
     check_command "node" "Node.js" "brew install node (or https://nodejs.org)"
     check_command "npm" "npm" "Comes with Node.js"
-    check_command "cline" "Cline" "npm install -g @anthropic-ai/cline" "false"
+    check_command "cline" "Cline" "npm install -g cline" "false"
 
     # Check cline (optional, not blocking)
     if command -v cline >/dev/null 2>&1; then
         echo "  ✓ Cline: $(command -v cline)"
     else
-        echo "  ○ Cline: не установлен (можно установить позже: npm install -g @anthropic-ai/cline)"
+        echo "  ○ Cline: не установлен (можно установить позже: npm install -g cline)"
     fi
 
     # Check gh auth
@@ -183,12 +183,12 @@ WORKSPACE_DIR="${WORKSPACE_DIR/#\~/$HOME}"
 
 if $CORE_ONLY; then
     # Core: используем defaults, не спрашиваем CLI-специфичные параметры
-    CLINE_PATH="${AI_CLI:-cline}"
+    CLAUDE_PATH="${AI_CLI:-cline}"
     TIMEZONE_HOUR="4"
     TIMEZONE_DESC="4:00 UTC"
 else
-    read -p "Cline CLI path [$(command -v cline || echo 'cline')]: " CLINE_PATH
-    CLINE_PATH="${CLINE_PATH:-$(command -v cline || echo 'cline')}"
+    read -p "Cline CLI path [$(command -v cline || echo 'cline')]: " CLAUDE_PATH
+    CLAUDE_PATH="${CLAUDE_PATH:-$(command -v cline || echo 'cline')}"
 
     read -p "Strategist launch hour (UTC, 0-23) [4]: " TIMEZONE_HOUR
     TIMEZONE_HOUR="${TIMEZONE_HOUR:-4}"
@@ -200,7 +200,7 @@ fi
 HOME_DIR="$HOME"
 
 # Compute Cline project slug: /Users/alice/IWE → -Users-alice-IWE
-CLINE_PROJECT_SLUG="$(echo "$WORKSPACE_DIR" | tr '/' '-')"
+CLAUDE_PROJECT_SLUG="$(echo "$WORKSPACE_DIR" | tr '/' '-')"
 
 echo ""
 echo "Configuration:"
@@ -210,12 +210,12 @@ echo "  Workspace:      $WORKSPACE_DIR"
 if $CORE_ONLY; then
     echo "  Mode:           core (offline)"
 else
-    echo "  Cline path:      $CLINE_PATH"
+    echo "  Cline path:      $CLAUDE_PATH"
     echo "  Schedule hour:  $TIMEZONE_HOUR (UTC)"
     echo "  Time desc:      $TIMEZONE_DESC"
 fi
 echo "  Home dir:       $HOME_DIR"
-echo "  Project slug:   $CLINE_PROJECT_SLUG"
+echo "  Project slug:   $CLAUDE_PROJECT_SLUG"
 echo ""
 
 # === Data Policy acceptance (skip in dry-run) ===
@@ -278,8 +278,8 @@ else
 GITHUB_USER=$GITHUB_USER
 EXOCORTEX_REPO=$EXOCORTEX_REPO
 WORKSPACE_DIR=$WORKSPACE_DIR
-CLINE_PATH=$CLINE_PATH
-CLINE_PROJECT_SLUG=$CLINE_PROJECT_SLUG
+CLAUDE_PATH=$CLAUDE_PATH
+CLAUDE_PROJECT_SLUG=$CLAUDE_PROJECT_SLUG
 TIMEZONE_HOUR=$TIMEZONE_HOUR
 TIMEZONE_DESC=$TIMEZONE_DESC
 HOME_DIR=$HOME_DIR
@@ -313,8 +313,8 @@ if $DRY_RUN; then
     echo "  [DRY RUN] Would substitute placeholders in $PLACEHOLDER_FILES files"
     echo "    sviridoves → $GITHUB_USER"
     echo "    /home/sviridov/IWE → $WORKSPACE_DIR"
-    echo "    {{CLINE_PATH}} → $CLINE_PATH"
-    echo "    {{CLINE_PROJECT_SLUG}} → $CLINE_PROJECT_SLUG"
+    echo "    /usr/bin/cline → $CLAUDE_PATH"
+    echo "    -home-sviridov-IWE → $CLAUDE_PROJECT_SLUG"
     echo "    5 → $TIMEZONE_HOUR"
     echo "    5:00 UTC → $TIMEZONE_DESC"
     echo "    /home/sviridov → $HOME_DIR"
@@ -323,8 +323,8 @@ else
         sed_inplace \
             -e "s|sviridoves|$GITHUB_USER|g" \
             -e "s|/home/sviridov/IWE|$WORKSPACE_DIR|g" \
-            -e "s|{{CLINE_PATH}}|$CLINE_PATH|g" \
-            -e "s|{{CLINE_PROJECT_SLUG}}|$CLINE_PROJECT_SLUG|g" \
+            -e "s|/usr/bin/cline|$CLAUDE_PATH|g" \
+            -e "s|-home-sviridov-IWE|$CLAUDE_PROJECT_SLUG|g" \
             -e "s|5|$TIMEZONE_HOUR|g" \
             -e "s|5:00 UTC|$TIMEZONE_DESC|g" \
             -e "s|/home/sviridov|$HOME_DIR|g" \
@@ -388,31 +388,31 @@ if $DRY_RUN; then
 else
     cp "$TEMPLATE_DIR/CLAUDE.md" "$WORKSPACE_DIR/CLAUDE.md"
     # Save base copy for 3-way merge on future updates
-    cp "$TEMPLATE_DIR/CLAUDE.md" "$TEMPLATE_DIR/.cline.md.base"
-    cp "$TEMPLATE_DIR/CLAUDE.md" "$WORKSPACE_DIR/.cline.md.base"
+    cp "$TEMPLATE_DIR/CLAUDE.md" "$TEMPLATE_DIR/.claude.md.base"
+    cp "$TEMPLATE_DIR/CLAUDE.md" "$WORKSPACE_DIR/.claude.md.base"
     echo "  Copied to $WORKSPACE_DIR/CLAUDE.md (+ merge base)"
 fi
 
 # === 3. Copy memory to Cline directory ===
 echo "[3/6] Installing memory..."
-CLINE_MEMORY_DIR="$HOME/.cline/memory"
+CLAUDE_MEMORY_DIR="$HOME/.claude/projects/$CLAUDE_PROJECT_SLUG/memory"
 if $DRY_RUN; then
     MEM_COUNT=$(ls "$TEMPLATE_DIR/memory/"*.md 2>/dev/null | wc -l | tr -d ' ')
-    echo "  [DRY RUN] Would copy $MEM_COUNT memory files → $CLINE_MEMORY_DIR/"
+    echo "  [DRY RUN] Would copy $MEM_COUNT memory files → $CLAUDE_MEMORY_DIR/"
     if [ ! -e "$WORKSPACE_DIR/memory" ]; then
-        echo "  [DRY RUN] Would create symlink: $WORKSPACE_DIR/memory → $CLINE_MEMORY_DIR"
+        echo "  [DRY RUN] Would create symlink: $WORKSPACE_DIR/memory → $CLAUDE_MEMORY_DIR"
     else
         echo "  WARN: $WORKSPACE_DIR/memory already exists, symlink would be skipped."
     fi
 else
-    mkdir -p "$CLINE_MEMORY_DIR"
-    cp "$TEMPLATE_DIR/memory/"*.md "$CLINE_MEMORY_DIR/"
-    echo "  Copied to $CLINE_MEMORY_DIR"
+    mkdir -p "$CLAUDE_MEMORY_DIR"
+    cp "$TEMPLATE_DIR/memory/"*.md "$CLAUDE_MEMORY_DIR/"
+    echo "  Copied to $CLAUDE_MEMORY_DIR"
 
     # Create symlink so CLAUDE.md references (memory/protocol-open.md etc.) resolve from workspace root
     if [ ! -e "$WORKSPACE_DIR/memory" ]; then
-        ln -s "$CLINE_MEMORY_DIR" "$WORKSPACE_DIR/memory"
-        echo "  Symlink: $WORKSPACE_DIR/memory → $CLINE_MEMORY_DIR"
+        ln -s "$CLAUDE_MEMORY_DIR" "$WORKSPACE_DIR/memory"
+        echo "  Symlink: $WORKSPACE_DIR/memory → $CLAUDE_MEMORY_DIR"
     else
         echo "  WARN: $WORKSPACE_DIR/memory already exists, symlink skipped."
     fi
@@ -425,16 +425,16 @@ else
     echo "[4/6] Installing Cline settings..."
     if $DRY_RUN; then
         if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
-            echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.cline/settings.json"
+            echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.claude/settings.local.json"
         else
             echo "  WARN: settings.local.json not found in template."
         fi
         echo "  [DRY RUN] Would show MCP setup instructions (Cline MCP settings)"
     else
-        mkdir -p "$WORKSPACE_DIR/.cline"
+        mkdir -p "$WORKSPACE_DIR/.claude"
         if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
-            cp "$TEMPLATE_DIR/.claude/settings.local.json" "$WORKSPACE_DIR/.cline/settings.json"
-            echo "  Copied to $WORKSPACE_DIR/.cline/settings.json"
+            cp "$TEMPLATE_DIR/.claude/settings.local.json" "$WORKSPACE_DIR/.claude/settings.local.json"
+            echo "  Copied to $WORKSPACE_DIR/.claude/settings.local.json"
         else
             echo "  WARN: settings.local.json not found in template, skipping."
         fi
@@ -590,8 +590,8 @@ else
     echo ""
     echo "Verify installation:"
     echo "  ✓ CLAUDE.md:   $WORKSPACE_DIR/CLAUDE.md"
-    echo "  ✓ Memory:      $CLINE_MEMORY_DIR/ ($(ls "$CLINE_MEMORY_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ') files)"
-    echo "  ✓ Symlink:     $WORKSPACE_DIR/memory → $CLINE_MEMORY_DIR"
+    echo "  ✓ Memory:      $CLAUDE_MEMORY_DIR/ ($(ls "$CLAUDE_MEMORY_DIR"/*.md 2>/dev/null | wc -l | tr -d ' ') files)"
+    echo "  ✓ Symlink:     $WORKSPACE_DIR/memory → $CLAUDE_MEMORY_DIR"
     echo "  ✓ DS-strategy: $MY_STRATEGY_DIR/"
     echo "  ✓ Template:    $TEMPLATE_DIR/"
     echo ""
