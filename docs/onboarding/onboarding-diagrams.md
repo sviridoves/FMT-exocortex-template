@@ -260,4 +260,4 @@ graph LR
 
 ---
 
-*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [FMT-exocortex-template](https://github.com/TserenTserenov/FMT-exocortex-template)*
+*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [DS-exocortex](https://github.com/TserenTserenov/DS-exocortex)*

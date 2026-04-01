@@ -113,8 +113,8 @@ IWE — для тех, кто хочет это изменить:
 
 ```bash
 cd ~/IWE
-gh repo fork TserenTserenov/FMT-exocortex-template --clone
-cd FMT-exocortex-template
+gh repo fork TserenTserenov/DS-exocortex --clone
+cd DS-exocortex
 bash setup.sh
 ```
 

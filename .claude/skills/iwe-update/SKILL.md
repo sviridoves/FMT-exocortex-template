@@ -18,7 +18,7 @@ version: 1.0.0
 Запустить update.sh в режиме превью:
 
 ```bash
-cd {{WORKSPACE_DIR}}/FMT-exocortex-template && bash update.sh --check 2>&1
+cd /home/sviridov/IWE/DS-exocortex && bash update.sh --check 2>&1
 ```
 
 Из вывода извлечь:
@@ -31,7 +31,7 @@ cd {{WORKSPACE_DIR}}/FMT-exocortex-template && bash update.sh --check 2>&1
 
 ### 2. CHANGELOG — что изменилось
 
-Прочитать `FMT-exocortex-template/CHANGELOG.md`. Найти записи между текущей и новой версией.
+Прочитать `DS-exocortex/CHANGELOG.md`. Найти записи между текущей и новой версией.
 
 **Объяснить пользователю на человеческом языке:**
 - Что добавлено и зачем (не список файлов, а **польза**)
@@ -77,7 +77,7 @@ ls extensions/*.md 2>/dev/null
 Если пользователь одобрил (или `--yes`):
 
 ```bash
-cd {{WORKSPACE_DIR}}/FMT-exocortex-template && bash update.sh --yes 2>&1
+cd /home/sviridov/IWE/DS-exocortex && bash update.sh --yes 2>&1
 ```
 
 Из вывода извлечь результат:

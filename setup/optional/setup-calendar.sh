@@ -13,7 +13,7 @@ if [ "$1" = "--account" ]; then
     ACCOUNT="${2:-personal}"
 fi
 
-# Workspace = parent of the script's directory (FMT-exocortex-template → workspace)
+# Workspace = parent of the script's directory (DS-exocortex → workspace)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # If running from workspace root directly

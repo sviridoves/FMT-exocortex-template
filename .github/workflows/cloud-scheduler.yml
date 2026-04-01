@@ -5,7 +5,7 @@ name: IWE Cloud Scheduler (базовый)
 # - Backup memory/ и CLAUDE.md в exocortex/
 # - Health check ночной автоматики
 #
-# Для пользователей шаблона FMT-exocortex-template.
+# Для пользователей шаблона DS-exocortex.
 # Подробности: DP.SC.019 (PACK-digital-platform/08-service-clauses/)
 #
 # Настройка:

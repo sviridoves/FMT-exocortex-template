@@ -64,7 +64,7 @@ done < <(find "$SCRIPT_DIR" -type f -not -path '*/.git/*' -not -name '.DS_Store'
 {
     echo '{'
     echo "  \"version\": \"$VERSION\","
-    echo '  "description": "Манифест платформенных файлов FMT-exocortex-template. Используется update.sh для доставки обновлений.",'
+    echo '  "description": "Манифест платформенных файлов DS-exocortex. Используется update.sh для доставки обновлений.",'
     echo '  "files": ['
 
     last_idx=$(( ${#FILES[@]} - 1 ))

@@ -24,7 +24,7 @@
 <!-- Добавьте свои DS-репо. Пример: -->
 <!-- | Мой бот (READ-ONLY) | `your-org/your-bot/` | -->
 <!-- | Монорепо ИИ-систем | `your-org/ai-systems/` | -->
-| Шаблонизатор | `FMT-exocortex-template/setup.sh` |
+| Шаблонизатор | `DS-exocortex/setup.sh` |
 | Личная онтология | `DS-strategy/ontology.md` |
 | Программа обучения | `DS-principles-curriculum/` |
 

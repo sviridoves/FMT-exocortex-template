@@ -135,9 +135,9 @@
 #### 1. Сбор данных
 
 ```bash
-for repo in $(ls {{WORKSPACE_DIR}}/); do
-  if [ -d {{WORKSPACE_DIR}}/$repo/.git ]; then
-    commits=$(git -C {{WORKSPACE_DIR}}/$repo log --since="today 00:00" --oneline --no-merges 2>/dev/null)
+for repo in $(ls /home/sviridov/IWE/); do
+  if [ -d /home/sviridov/IWE/$repo/.git ]; then
+    commits=$(git -C /home/sviridov/IWE/$repo log --since="today 00:00" --oneline --no-merges 2>/dev/null)
     [ -n "$commits" ] && echo "=== $repo ===" && echo "$commits"
   fi
 done
@@ -181,7 +181,7 @@ done
 
 ```bash
 # Запуск одной командой:
-{{WORKSPACE_DIR}}/DS-IT-systems/DS-ai-systems/synchronizer/scripts/day-close.sh
+/home/sviridov/IWE/DS-IT-systems/DS-ai-systems/synchronizer/scripts/day-close.sh
 ```
 
 Скрипт выполняет:
@@ -388,7 +388,7 @@ done
 #### 3b. Staging-канал (промоция в шаблон)
 
 Открыть `DS-ecosystem-development/C.IT-Platform/C2.IT-Platform/C2.3.Operations/IWE-staging.md`:
-- Есть строки со статусом `validated`? → выполнить чеклист промоции (убрать авторские константы → FMT-exocortex-template → commit `feat: promote S-NN`)
+- Есть строки со статусом `validated`? → выполнить чеклист промоции (убрать авторские константы → DS-exocortex → commit `feat: promote S-NN`)
 - Нет `validated` → просмотреть `testing`: критерий выполнен? → сменить статус на `validated` (промоция на следующей неделе)
 - Добавить новые кандидаты если появились за неделю
 

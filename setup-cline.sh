@@ -116,14 +116,7 @@ else
     check_command "gh" "GitHub CLI" "brew install gh"
     check_command "node" "Node.js" "brew install node (or https://nodejs.org)"
     check_command "npm" "npm" "Comes with Node.js"
-    check_command "cline" "Cline" "npm install -g @anthropic-ai/cline" "false"
-
-    # Check cline (optional, not blocking)
-    if command -v cline >/dev/null 2>&1; then
-        echo "  ✓ Cline: $(command -v cline)"
-    else
-        echo "  ○ Cline: не установлен (можно установить позже: npm install -g @anthropic-ai/cline)"
-    fi
+    check_command "cline" "Cline" "npm install -g @cline/cline"
 
     # Check gh auth
     if command -v gh >/dev/null 2>&1; then
@@ -182,13 +175,13 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-$(dirname "$TEMPLATE_DIR")}"
 WORKSPACE_DIR="${WORKSPACE_DIR/#\~/$HOME}"
 
 if $CORE_ONLY; then
-    # Core: используем defaults, не спрашиваем CLI-специфичные параметры
+    # Core: используем defaults, не спрашиваем Cline-специфичные параметры
     CLINE_PATH="${AI_CLI:-cline}"
     TIMEZONE_HOUR="4"
     TIMEZONE_DESC="4:00 UTC"
 else
-    read -p "Cline CLI path [$(command -v cline || echo 'cline')]: " CLINE_PATH
-    CLINE_PATH="${CLINE_PATH:-$(command -v cline || echo 'cline')}"
+    read -p "Cline CLI path [$(command -v cline || echo '/opt/homebrew/bin/cline')]: " CLINE_PATH
+    CLINE_PATH="${CLINE_PATH:-$(command -v cline || echo '/opt/homebrew/bin/cline')}"
 
     read -p "Strategist launch hour (UTC, 0-23) [4]: " TIMEZONE_HOUR
     TIMEZONE_HOUR="${TIMEZONE_HOUR:-4}"
@@ -210,7 +203,7 @@ echo "  Workspace:      $WORKSPACE_DIR"
 if $CORE_ONLY; then
     echo "  Mode:           core (offline)"
 else
-    echo "  Cline path:      $CLINE_PATH"
+    echo "  Cline path:    $CLINE_PATH"
     echo "  Schedule hour:  $TIMEZONE_HOUR (UTC)"
     echo "  Time desc:      $TIMEZONE_DESC"
 fi
@@ -223,7 +216,7 @@ if ! $DRY_RUN; then
     echo "Data Policy"
     echo "  IWE collects and processes data as described in docs/DATA-POLICY.md"
     echo "  Summary: profile, sessions, and learning data are stored on the platform (Neon DB)."
-    echo "  Your personal/ files stay local. Claude API receives prompts + profile context."
+    echo "  Your personal/ files stay local. Cline API receives prompts + profile context."
     echo "  You can view your data (/mydata) and delete it at any time."
     echo ""
     echo "  Full policy: docs/DATA-POLICY.md"
@@ -313,8 +306,8 @@ if $DRY_RUN; then
     echo "  [DRY RUN] Would substitute placeholders in $PLACEHOLDER_FILES files"
     echo "    sviridoves → $GITHUB_USER"
     echo "    /home/sviridov/IWE → $WORKSPACE_DIR"
-    echo "    {{CLINE_PATH}} → $CLINE_PATH"
-    echo "    {{CLINE_PROJECT_SLUG}} → $CLINE_PROJECT_SLUG"
+    echo "    /usr/bin/cline → $CLINE_PATH"
+    echo "    -home-sviridov-IWE → $CLINE_PROJECT_SLUG"
     echo "    5 → $TIMEZONE_HOUR"
     echo "    5:00 UTC → $TIMEZONE_DESC"
     echo "    /home/sviridov → $HOME_DIR"
@@ -323,8 +316,8 @@ else
         sed_inplace \
             -e "s|sviridoves|$GITHUB_USER|g" \
             -e "s|/home/sviridov/IWE|$WORKSPACE_DIR|g" \
-            -e "s|{{CLINE_PATH}}|$CLINE_PATH|g" \
-            -e "s|{{CLINE_PROJECT_SLUG}}|$CLINE_PROJECT_SLUG|g" \
+            -e "s|/usr/bin/cline|$CLINE_PATH|g" \
+            -e "s|-home-sviridov-IWE|$CLINE_PROJECT_SLUG|g" \
             -e "s|5|$TIMEZONE_HOUR|g" \
             -e "s|5:00 UTC|$TIMEZONE_DESC|g" \
             -e "s|/home/sviridov|$HOME_DIR|g" \
@@ -381,8 +374,8 @@ else
     echo "  Repo name unchanged ($CURRENT_DIR_NAME)."
 fi
 
-# === 2. Copy CLAUDE.md to workspace root (Cline uses CLAUDE.md compat) ===
-echo "[2/6] Installing CLAUDE.md (Cline compatible)..."
+# === 2. Copy CLAUDE.md to workspace root ===
+echo "[2/6] Installing CLAUDE.md..."
 if $DRY_RUN; then
     echo "  [DRY RUN] Would copy: $TEMPLATE_DIR/CLAUDE.md → $WORKSPACE_DIR/CLAUDE.md"
 else
@@ -393,9 +386,9 @@ else
     echo "  Copied to $WORKSPACE_DIR/CLAUDE.md (+ merge base)"
 fi
 
-# === 3. Copy memory to Cline directory ===
+# === 3. Copy memory to Cline projects directory ===
 echo "[3/6] Installing memory..."
-CLINE_MEMORY_DIR="$HOME/.cline/memory"
+CLINE_MEMORY_DIR="$HOME/.cline/projects/$CLINE_PROJECT_SLUG/memory"
 if $DRY_RUN; then
     MEM_COUNT=$(ls "$TEMPLATE_DIR/memory/"*.md 2>/dev/null | wc -l | tr -d ' ')
     echo "  [DRY RUN] Would copy $MEM_COUNT memory files → $CLINE_MEMORY_DIR/"
@@ -424,50 +417,47 @@ if $CORE_ONLY || [ "$INSTALL_LEVEL" = "T1" ]; then
 else
     echo "[4/6] Installing Cline settings..."
     if $DRY_RUN; then
-        if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
-            echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.cline/settings.json"
+        if [ -f "$TEMPLATE_DIR/.cline/settings.local.json" ]; then
+            echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.cline/settings.local.json"
         else
             echo "  WARN: settings.local.json not found in template."
         fi
-        echo "  [DRY RUN] Would show MCP setup instructions (Cline MCP settings)"
     else
         mkdir -p "$WORKSPACE_DIR/.cline"
-        if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
-            cp "$TEMPLATE_DIR/.claude/settings.local.json" "$WORKSPACE_DIR/.cline/settings.json"
-            echo "  Copied to $WORKSPACE_DIR/.cline/settings.json"
+        if [ -f "$TEMPLATE_DIR/.cline/settings.local.json" ]; then
+            cp "$TEMPLATE_DIR/.cline/settings.local.json" "$WORKSPACE_DIR/.cline/settings.local.json"
+            echo "  Copied to $WORKSPACE_DIR/.cline/settings.local.json"
         else
             echo "  WARN: settings.local.json not found in template, skipping."
         fi
 
-        # MCP servers are managed through Cline settings (.mcp.json or .cline/mcp_settings.json)
-        echo "  MCP серверы подключаются через настройки Cline:"
+        # MCP servers are managed through VS Code extension settings
+        echo "  MCP серверы настраиваются через настройки расширения Cline в VS Code:"
         echo ""
-        echo "  1. Откройте VS Code → Cline extension settings"
-        echo "  2. Добавьте MCP серверы в 'MCP Servers' конфигурацию:"
-        echo "     - knowledge-mcp: https://knowledge-mcp.aisystant.workers.dev/mcp"
-        echo "     - digital-twin-mcp: https://digital-twin-mcp.aisystant.workers.dev/mcp"
-        echo "  3. Перезапустите Cline"
+        echo "  1. Откройте настройки расширения Cline"
+        echo "  2. Добавьте MCP серверы в конфигурацию"
+        echo "  3. Перезапустите VS Code"
         echo ""
-        echo "  После подключения проверьте команды MCP в Cline."
+        echo "  После настройки проверьте MCP статус в интерфейсе Cline."
     fi
 fi
 
 # === 4b. Propagate skills, hooks, rules to workspace ===
 echo "[4b] Installing skills, hooks, rules..."
 if $DRY_RUN; then
-    echo "  [DRY RUN] Would copy .claude/skills/, .claude/hooks/, .claude/rules/ → $WORKSPACE_DIR/.claude/"
+    echo "  [DRY RUN] Would copy .cline/skills/, .cline/hooks/, .cline/rules/ → $WORKSPACE_DIR/.cline/"
 else
-    mkdir -p "$WORKSPACE_DIR/.claude"
+    mkdir -p "$WORKSPACE_DIR/.cline"
     for subdir in skills hooks rules; do
-        if [ -d "$TEMPLATE_DIR/.claude/$subdir" ]; then
-            cp -r "$TEMPLATE_DIR/.claude/$subdir" "$WORKSPACE_DIR/.claude/"
-            echo "  ✓ .claude/$subdir/ → $WORKSPACE_DIR/.claude/$subdir/"
+        if [ -d "$TEMPLATE_DIR/.cline/$subdir" ]; then
+            cp -r "$TEMPLATE_DIR/.cline/$subdir" "$WORKSPACE_DIR/.cline/"
+            echo "  ✓ .cline/$subdir/ → $WORKSPACE_DIR/.cline/$subdir/"
         fi
     done
     # Copy settings.json (project-level, not local)
-    if [ -f "$TEMPLATE_DIR/.claude/settings.json" ]; then
-        cp "$TEMPLATE_DIR/.claude/settings.json" "$WORKSPACE_DIR/.claude/settings.json"
-        echo "  ✓ .claude/settings.json"
+    if [ -f "$TEMPLATE_DIR/.cline/settings.json" ]; then
+        cp "$TEMPLATE_DIR/.cline/settings.json" "$WORKSPACE_DIR/.cline/settings.json"
+        echo "  ✓ .cline/settings.json"
     fi
 fi
 
