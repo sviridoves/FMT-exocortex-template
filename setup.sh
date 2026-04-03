@@ -3,7 +3,7 @@
 # Configures a forked DS-exocortex: placeholders, memory, launchd, DS-strategy
 #
 # Usage:
-#   bash setup.sh          # Полная установка (git + GitHub CLI + Cline + автоматизация)
+#   bash setup.sh          # Полная установка (git + GitHub CLI + Claude Code + автоматизация)
 #   bash setup.sh --core   # Минимальная установка (только git, без сети)
 #
 set -e
@@ -37,7 +37,7 @@ for arg in "$@"; do
             echo "Usage: setup.sh [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --level=T1  Минимум: Cline + экзокортекс (≤15 мин)"
+            echo "  --level=T1  Минимум: Claude Code + экзокортекс (≤15 мин)"
             echo "  --level=T2  Стандарт: + ритуалы ОРЗ + extensions/"
             echo "  --level=T3  Рост: + Pack + бот"
             echo "  --level=T4  Полный: + роли + автоматизация (launchd)"
@@ -111,19 +111,12 @@ check_command "git" "Git" "xcode-select --install"
 if $CORE_ONLY; then
     echo ""
     echo "  Режим --core: проверяются только обязательные зависимости (git)."
-    echo "  GitHub CLI, Node.js, Cline — не требуются."
+    echo "  GitHub CLI, Node.js, Claude Code — не требуются."
 else
     check_command "gh" "GitHub CLI" "brew install gh"
     check_command "node" "Node.js" "brew install node (or https://nodejs.org)"
     check_command "npm" "npm" "Comes with Node.js"
-    check_command "cline" "Cline" "npm install -g cline" "false"
-
-    # Check cline (optional, not blocking)
-    if command -v cline >/dev/null 2>&1; then
-        echo "  ✓ Cline: $(command -v cline)"
-    else
-        echo "  ○ Cline: не установлен (можно установить позже: npm install -g cline)"
-    fi
+    check_command "claude" "Claude Code" "npm install -g @anthropic-ai/claude-code"
 
     # Check gh auth
     if command -v gh >/dev/null 2>&1; then
@@ -148,7 +141,7 @@ fi
 if [ -z "$INSTALL_LEVEL" ] && ! $CORE_ONLY; then
     echo "Выбери уровень установки (можно добавить следующий уровень позже):"
     echo ""
-    echo "  T1  Минимум      Cline + экзокортекс. Требует ≤15 мин."
+    echo "  T1  Минимум      Claude Code + экзокортекс. Требует ≤15 мин."
     echo "  T2  Стандарт     + ритуалы ОРЗ (Day Open/Close, WeekPlan) + extensions/"
     echo "  T3  Рост         + Pack + бот (Telegram)"
     echo "  T4  Полный       + роли + launchd-автоматизация (Стратег, Синхронизатор)"
@@ -182,13 +175,13 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-$(dirname "$TEMPLATE_DIR")}"
 WORKSPACE_DIR="${WORKSPACE_DIR/#\~/$HOME}"
 
 if $CORE_ONLY; then
-    # Core: используем defaults, не спрашиваем CLI-специфичные параметры
-    CLAUDE_PATH="${AI_CLI:-cline}"
+    # Core: используем defaults, не спрашиваем Claude-специфичные параметры
+    CLAUDE_PATH="${AI_CLI:-claude}"
     TIMEZONE_HOUR="4"
     TIMEZONE_DESC="4:00 UTC"
 else
-    read -p "Cline CLI path [$(command -v cline || echo 'cline')]: " CLAUDE_PATH
-    CLAUDE_PATH="${CLAUDE_PATH:-$(command -v cline || echo 'cline')}"
+    read -p "Claude CLI path [$(command -v claude || echo '/opt/homebrew/bin/claude')]: " CLAUDE_PATH
+    CLAUDE_PATH="${CLAUDE_PATH:-$(command -v claude || echo '/opt/homebrew/bin/claude')}"
 
     read -p "Strategist launch hour (UTC, 0-23) [4]: " TIMEZONE_HOUR
     TIMEZONE_HOUR="${TIMEZONE_HOUR:-4}"
@@ -199,7 +192,7 @@ fi
 
 HOME_DIR="$HOME"
 
-# Compute Cline project slug: /Users/alice/IWE → -Users-alice-IWE
+# Compute Claude project slug: /Users/alice/IWE → -Users-alice-IWE
 CLAUDE_PROJECT_SLUG="$(echo "$WORKSPACE_DIR" | tr '/' '-')"
 
 echo ""
@@ -210,7 +203,7 @@ echo "  Workspace:      $WORKSPACE_DIR"
 if $CORE_ONLY; then
     echo "  Mode:           core (offline)"
 else
-    echo "  Cline path:      $CLAUDE_PATH"
+    echo "  Claude path:    $CLAUDE_PATH"
     echo "  Schedule hour:  $TIMEZONE_HOUR (UTC)"
     echo "  Time desc:      $TIMEZONE_DESC"
 fi
@@ -284,6 +277,13 @@ TIMEZONE_HOUR=$TIMEZONE_HOUR
 TIMEZONE_DESC=$TIMEZONE_DESC
 HOME_DIR=$HOME_DIR
 INSTALL_LEVEL=$INSTALL_LEVEL
+
+# === MCP (substituted into .mcp.json) ===
+# Platform MCP packages — update version here, run update.sh to apply
+KNOWLEDGE_MCP_PACKAGE=@aisystant/knowledge-mcp
+KNOWLEDGE_MCP_DATABASE_URL=
+DIGITAL_TWIN_MCP_PACKAGE=@aisystant/digital-twin-mcp
+DIGITAL_TWIN_DATABASE_URL=
 
 # === Knowledge Gateway (T3+, NOT substituted into files — read by Gateway scripts only) ===
 # ORY_TOKEN: platform authentication token. Rotate manually if expired. update.sh preserves this value.
@@ -381,8 +381,8 @@ else
     echo "  Repo name unchanged ($CURRENT_DIR_NAME)."
 fi
 
-# === 2. Copy CLAUDE.md to workspace root (Cline uses CLAUDE.md compat) ===
-echo "[2/6] Installing CLAUDE.md (Cline compatible)..."
+# === 2. Copy CLAUDE.md to workspace root ===
+echo "[2/6] Installing CLAUDE.md..."
 if $DRY_RUN; then
     echo "  [DRY RUN] Would copy: $TEMPLATE_DIR/CLAUDE.md → $WORKSPACE_DIR/CLAUDE.md"
 else
@@ -393,7 +393,7 @@ else
     echo "  Copied to $WORKSPACE_DIR/CLAUDE.md (+ merge base)"
 fi
 
-# === 3. Copy memory to Cline directory ===
+# === 3. Copy memory to Claude projects directory ===
 echo "[3/6] Installing memory..."
 CLAUDE_MEMORY_DIR="$HOME/.claude/projects/$CLAUDE_PROJECT_SLUG/memory"
 if $DRY_RUN; then
@@ -418,18 +418,18 @@ else
     fi
 fi
 
-# === 4. Copy .cline settings ===
+# === 4. Copy .claude settings ===
 if $CORE_ONLY || [ "$INSTALL_LEVEL" = "T1" ]; then
-    echo "[4/6] Cline settings... пропущено (уровень $INSTALL_LEVEL)"
+    echo "[4/6] Claude settings... пропущено (уровень $INSTALL_LEVEL)"
 else
-    echo "[4/6] Installing Cline settings..."
+    echo "[4/6] Installing Claude settings..."
     if $DRY_RUN; then
         if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
             echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.claude/settings.local.json"
         else
             echo "  WARN: settings.local.json not found in template."
         fi
-        echo "  [DRY RUN] Would show MCP setup instructions (Cline MCP settings)"
+        echo "  [DRY RUN] Would show MCP setup instructions (claude.ai/settings/connectors)"
     else
         mkdir -p "$WORKSPACE_DIR/.claude"
         if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
@@ -439,16 +439,15 @@ else
             echo "  WARN: settings.local.json not found in template, skipping."
         fi
 
-        # MCP servers are managed through Cline settings (.mcp.json or .cline/mcp_settings.json)
-        echo "  MCP серверы подключаются через настройки Cline:"
+        # MCP servers are managed through claude.ai connectors (not local CLI)
+        echo "  MCP серверы подключаются через claude.ai:"
         echo ""
-        echo "  1. Откройте VS Code → Cline extension settings"
-        echo "  2. Добавьте MCP серверы в 'MCP Servers' конфигурацию:"
-        echo "     - knowledge-mcp: https://knowledge-mcp.aisystant.workers.dev/mcp"
-        echo "     - digital-twin-mcp: https://digital-twin-mcp.aisystant.workers.dev/mcp"
-        echo "  3. Перезапустите Cline"
+        echo "  1. Откройте https://claude.ai/settings/connectors"
+        echo "  2. Добавьте: https://knowledge-mcp.aisystant.workers.dev/mcp"
+        echo "  3. Добавьте: https://digital-twin-mcp.aisystant.workers.dev/mcp"
+        echo "  4. Перезапустите Claude Code"
         echo ""
-        echo "  После подключения проверьте команды MCP в Cline."
+        echo "  После подключения проверьте командой /mcp в Claude Code."
     fi
 fi
 
@@ -468,6 +467,80 @@ else
     if [ -f "$TEMPLATE_DIR/.claude/settings.json" ]; then
         cp "$TEMPLATE_DIR/.claude/settings.json" "$WORKSPACE_DIR/.claude/settings.json"
         echo "  ✓ .claude/settings.json"
+    fi
+fi
+
+# === 4c. Generate .mcp.json in workspace ===
+echo "[4c] Configuring .mcp.json..."
+
+MCP_TEMPLATE="$TEMPLATE_DIR/.mcp.json"
+MCP_DEST="$WORKSPACE_DIR/.mcp.json"
+MCP_USER_EXT="$WORKSPACE_DIR/extensions/mcp-user.json"
+
+if $DRY_RUN; then
+    echo "  [DRY RUN] Would generate $MCP_DEST from $MCP_TEMPLATE"
+    echo "    Substituting: KNOWLEDGE_MCP_PACKAGE, KNOWLEDGE_MCP_DATABASE_URL,"
+    echo "                  DIGITAL_TWIN_MCP_PACKAGE, DIGITAL_TWIN_DATABASE_URL, GITHUB_USER"
+    if [ -f "$MCP_USER_EXT" ] && command -v jq >/dev/null 2>&1; then
+        echo "  [DRY RUN] Would merge extensions/mcp-user.json into .mcp.json"
+    fi
+elif [ ! -f "$MCP_TEMPLATE" ]; then
+    echo "  WARN: $MCP_TEMPLATE not found, skipping."
+else
+    # Read MCP variables from .exocortex.env (already saved above)
+    ENV_FILE="$TEMPLATE_DIR/.exocortex.env"
+    KNOWLEDGE_MCP_PACKAGE=""
+    KNOWLEDGE_MCP_DATABASE_URL=""
+    DIGITAL_TWIN_MCP_PACKAGE=""
+    DIGITAL_TWIN_DATABASE_URL=""
+    MCP_GITHUB_USER="$GITHUB_USER"  # already collected above; re-read from env as fallback
+    if [ -f "$ENV_FILE" ]; then
+        while IFS= read -r line; do
+            case "$line" in \#*|"") continue ;; esac
+            k="${line%%=*}"; v="${line#*=}"
+            k=$(echo "$k" | tr -d '[:space:]')
+            case "$k" in
+                GITHUB_USER)               MCP_GITHUB_USER="$v" ;;
+                KNOWLEDGE_MCP_PACKAGE)     KNOWLEDGE_MCP_PACKAGE="$v" ;;
+                KNOWLEDGE_MCP_DATABASE_URL) KNOWLEDGE_MCP_DATABASE_URL="$v" ;;
+                DIGITAL_TWIN_MCP_PACKAGE)  DIGITAL_TWIN_MCP_PACKAGE="$v" ;;
+                DIGITAL_TWIN_DATABASE_URL) DIGITAL_TWIN_DATABASE_URL="$v" ;;
+            esac
+        done < "$ENV_FILE"
+    fi
+
+    # Copy template .mcp.json to workspace
+    cp "$MCP_TEMPLATE" "$MCP_DEST"
+
+    # Substitute MCP-specific placeholders
+    sed_inplace \
+        -e "s|sviridoves|${MCP_GITHUB_USER:-}|g" \
+        -e "s|@aisystant/knowledge-mcp|${KNOWLEDGE_MCP_PACKAGE:-@aisystant/knowledge-mcp}|g" \
+        -e "s||${KNOWLEDGE_MCP_DATABASE_URL:-}|g" \
+        -e "s|@aisystant/digital-twin-mcp|${DIGITAL_TWIN_MCP_PACKAGE:-@aisystant/digital-twin-mcp}|g" \
+        -e "s||${DIGITAL_TWIN_DATABASE_URL:-}|g" \
+        "$MCP_DEST"
+
+    echo "  Generated: $MCP_DEST"
+
+    # Merge extensions/mcp-user.json if it exists and has content
+    if [ -f "$MCP_USER_EXT" ]; then
+        if command -v jq >/dev/null 2>&1; then
+            # Check if mcp-user.json has any servers
+            USER_COUNT=$(jq '.mcpServers | length' "$MCP_USER_EXT" 2>/dev/null || echo "0")
+            if [ "$USER_COUNT" -gt 0 ]; then
+                MCP_MERGED=$(jq -s '.[0].mcpServers * .[1].mcpServers | {mcpServers: .}' "$MCP_DEST" "$MCP_USER_EXT" 2>/dev/null)
+                if [ -n "$MCP_MERGED" ]; then
+                    echo "$MCP_MERGED" > "$MCP_DEST"
+                    echo "  Merged $USER_COUNT server(s) from extensions/mcp-user.json"
+                fi
+            else
+                echo "  extensions/mcp-user.json is empty — skipping merge"
+            fi
+        else
+            echo "  ○ jq not found — extensions/mcp-user.json merge skipped"
+            echo "    Install jq: brew install jq"
+        fi
     fi
 fi
 
@@ -599,29 +672,29 @@ else
     echo "Next steps:"
     echo "  1. cd $WORKSPACE_DIR"
     if $CORE_ONLY || [ "$INSTALL_LEVEL" = "T1" ]; then
-        echo "  2. Запустите ваш AI CLI (Cline, Codex, Aider, Continue.dev и др.)"
+        echo "  2. Запустите ваш AI CLI (Claude Code, Codex, Aider, Continue.dev и др.)"
         echo "  3. Скажите: «Проведём первую стратегическую сессию»"
         echo ""
         echo "Следующий уровень (ритуалы ОРЗ + extensions):"
         echo "  bash $TEMPLATE_DIR/setup.sh --level=T2"
         echo ""
     elif [ "$INSTALL_LEVEL" = "T2" ]; then
-        echo "  2. cline"
-        echo "  3. Ask Cline: «Открывай» (Day Open)"
+        echo "  2. claude"
+        echo "  3. Ask Claude: «Открывай» (Day Open)"
         echo ""
         echo "Следующий уровень (Pack + бот):"
         echo "  bash $TEMPLATE_DIR/setup.sh --level=T3"
         echo ""
     elif [ "$INSTALL_LEVEL" = "T3" ]; then
-        echo "  2. cline"
-        echo "  3. Ask Cline: «Открывай» (Day Open)"
+        echo "  2. claude"
+        echo "  3. Ask Claude: «Открывай» (Day Open)"
         echo ""
         echo "Следующий уровень (роли + автоматизация):"
         echo "  bash $TEMPLATE_DIR/setup.sh --level=T4"
         echo ""
     else
-        echo "  2. cline"
-        echo "  3. Ask Cline: «Проведём первую стратегическую сессию»"
+        echo "  2. claude"
+        echo "  3. Ask Claude: «Проведём первую стратегическую сессию»"
         echo ""
         echo "Strategist will run automatically:"
         echo "  - Morning ($TIMEZONE_DESC): strategy (Mon) / day-plan (Tue-Sun)"
