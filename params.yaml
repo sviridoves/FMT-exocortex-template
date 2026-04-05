@@ -11,10 +11,10 @@
 video_check: true
 
 # Day Close: расчёт мультипликатора IWE (требует WakaTime API key)
-multiplier_enabled: true
+multiplier_enabled: false
 
 # Day Close: рефлексия (вопросы в конце дня)
-reflection_enabled: false
+reflection_enabled: true
 
 # Week Close: ротация уроков в MEMORY.md
 lesson_rotation: true

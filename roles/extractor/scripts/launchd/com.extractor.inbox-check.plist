@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/home/sviridov/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh</string>
+        <string>/home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh</string>
         <string>inbox-check</string>
     </array>
 
@@ -15,17 +15,17 @@
     <integer>10800</integer>
 
     <key>StandardOutPath</key>
-    <string>/home/sviridov/logs/extractor/launchd-inbox-check.log</string>
+    <string>/home/vps/logs/extractor/launchd-inbox-check.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/home/sviridov/logs/extractor/launchd-inbox-check-error.log</string>
+    <string>/home/vps/logs/extractor/launchd-inbox-check-error.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
         <key>HOME</key>
-        <string>/home/sviridov</string>
+        <string>/home/vps</string>
     </dict>
 
     <key>RunAtLoad</key>

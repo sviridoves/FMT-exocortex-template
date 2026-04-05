@@ -33,7 +33,7 @@ IWE — операционная система интеллектуальной
   Сообщество         — где живёшь (среда созидателей)
 ```
 
-**Важно:** IWE — это инструмент. Но за инструментом стоят теории (системное мышление, менеджмент, инженерия) и культура работы (14 элементов: протоколы, навыки, форматы). Без теорий инструмент останется блокнотом с ИИ. С теориями — становится экзотелом для мышления.
+**Важно:** IWE — это инструмент. Но за инструментом стоят теории (системное мышление, менеджмент, инженерия) и культура работы (15 элементов: протоколы, навыки, форматы). Без теорий инструмент останется блокнотом с ИИ. С теориями — становится экзотелом для мышления.
 
 ### Как компоненты решают проблемы
 
@@ -45,7 +45,7 @@ IWE — операционная система интеллектуальной
 | Не знаю, куда расти | **Модель мастерства** | Чёткая траектория: от новичка до эксперта. Каждый тир — конкретные навыки и результаты |
 | Один на один с проблемами | **Сообщество** | Среда созидателей: обмен опытом, ревью, поддержка |
 
-> Подробнее о каждом сценарии: [Планирование дня](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.001-daily-planning.md) | [Планирование недели](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.002-weekly-planning.md) | [Развитие и обучение](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.003-learning-and-development.md) | [Захват знаний](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.004-knowledge-capture.md)
+> Подробнее о каждом сценарии: [Планирование дня](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.001-daily-planning.md) | [Планирование недели](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.002-weekly-planning.md) | [Развитие и обучение](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.003-learning-and-development.md) | [Захват знаний](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.005-knowledge-capture.md)
 
 ---
 
@@ -56,19 +56,19 @@ graph LR
     S1["Шаг 1\nПойми зачем\n(ты здесь)"]
     S2["Шаг 2\nУстанови\nинструменты"]
     S3["Шаг 3\nПервая\nсессия"]
-    S4["Шаг 4\nЕжедневная\nпрактика"]
+    S5["Шаг 5\nЕжедневная\nпрактика"]
     S5["Шаг 5\nСистемное\nмышление"]
 
     S1 -->|"15 мин"| S2
     S2 -->|"20 мин\n(ИИ поможет)"| S3
-    S3 -->|"30 мин"| S4
-    S4 -->|"1-2 недели"| S5
+    S3 -->|"30 мин"| S5
+    S5 -->|"1-2 недели"| S5
 
     style S1 fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style S2 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style S2 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
     style S3 fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style S4 fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
-    style S5 fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style S5 fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
+    style S5 fill:#fce5ec,stroke:#e53935,stroke-width:2px
 ```
 
 ### Шаг 1. Пойми зачем (ты уже здесь)
@@ -103,7 +103,7 @@ graph LR
 
 > Подробнее: [SETUP-GUIDE.md, этап 2](../SETUP-GUIDE.md)
 
-### Шаг 4. Ежедневная практика (1-2 недели)
+### Шаг 5. Ежедневная практика (1-2 недели)
 
 Каждый день — один и тот же ритм:
 - **Утро:** «Открой день» → Claude показывает план, события, на чём остановился
@@ -120,7 +120,7 @@ graph LR
 
 ---
 
-## 4. Не бойся
+## 5. Не бойся
 
 ### «Я не программист»
 
@@ -144,7 +144,7 @@ IWE — это не монолит, который нужно освоить ц�
 | **T1 — Старт** | Claude Code + экзокортекс | Персональный ИИ-ассистент, который тебя помнит |
 | **T2 — Практика** | + ритуалы ОРЗ + план дня | Структурированная работа без потери контекста |
 | **T3 — Рост** | + Pack + бот | База знаний + мобильный доступ |
-| **T4 — Мастерство** | + роли + автоматизация | ИИ-агенты, которые работают самостоятельно |
+| **T5 — Мастерство** | + роли + автоматизация | ИИ-агенты, которые работают самостоятельно |
 
 > Подробнее о тирах: [LEARNING-PATH.md, §9 — Платформа и тиры](../LEARNING-PATH.md)
 
@@ -173,7 +173,7 @@ IWE — это не монолит, который нужно освоить ц�
 
 ### Культура работы — как работаешь
 
-Культура работы — это не абстрактная ценность. Это **14 конкретных элементов**, разделённых на три типа:
+Культура работы — это не абстрактная ценность. Это **15 конкретных элементов**, разделённых на три типа:
 
 | Тип | Что это | Примеры |
 |-----|---------|---------|
@@ -234,7 +234,7 @@ graph TB
     end
 
     subgraph mastery["Модель мастерства"]
-        T1["T1 Старт"] --> T2["T2 Практика"] --> T3["T3 Рост"] --> T4["T4 Мастерство"]
+        T1["T1 Старт"] --> T2["T2 Практика"] --> T3["T3 Рост"] --> T5["T5 Мастерство"]
     end
 
     subgraph community["Сообщество"]
@@ -253,11 +253,11 @@ graph TB
     mastery -->|"куда растёшь"| pair
     community -->|"где живёшь"| pair
 
-    style core fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style core fill:#fce5ec,stroke:#e53935,stroke-width:2px
     style culture fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style mastery fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style mastery fill:#e8f5e9,stroke:#53a057,stroke-width:2px
     style community fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style pair fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+    style pair fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
 ```
 
 **Четыре компонента — и ты в центре:**
@@ -265,7 +265,7 @@ graph TB
 | Компонент | Что это | Простая аналогия |
 |-----------|---------|-----------------|
 | **Ядро мышления** | Теории + экзокортекс + Pack. Фундамент, на котором строится всё | Операционная система (ядро Linux) |
-| **Культура работы** | Протоколы, навыки, форматы — 14 элементов | Стандартные утилиты (ls, grep, git) |
+| **Культура работы** | Протоколы, навыки, форматы — 15 элементов | Стандартные утилиты (ls, grep, git) |
 | **Модель мастерства** | Траектория от новичка до эксперта | Система пакетов (apt install) |
 | **Сообщество** | Среда созидателей: обмен, ревью, поддержка | Форум + репозитории (GitHub community) |
 
@@ -311,11 +311,11 @@ graph TD
     PACK -->|"обогащает"| AI
     AI -->|"помогает структурировать"| PACK
 
-    style ZP fill:#fce4ec,stroke:#e53935,stroke-width:2px
-    style FPF fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style ZP fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style FPF fill:#fce5ec,stroke:#e53935,stroke-width:2px
     style PACK fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style DS fill:#e8f5e9,stroke:#43a047,stroke-width:2px
-    style USER fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+    style DS fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style USER fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
     style AI fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
 ```
 
@@ -326,7 +326,7 @@ graph TD
 | **Вторые (Pack)** | Ты | Ты + ИИ | Твои знания по маркетингу, управлению, инженерии |
 | **Третьи (DS)** | Ты + ИИ | Ты + ИИ | Конкретные планы, код, процессы |
 
-### Культура работы: 14 элементов
+### Культура работы: 15 элементов
 
 Культура работы — второй компонент IWE. Это не «мотивация» и не «привычки». Это **проектируемый набор методов**, разделённых на три типа:
 
@@ -377,7 +377,7 @@ IWE использует конкретные концепции из теори
 |--------|---------|--------|
 | Пошаговая установка | 7 этапов, от нуля до рабочей IWE | [SETUP-GUIDE.md](../SETUP-GUIDE.md) |
 | Путь обучения | Полная программа освоения (11 разделов) | [LEARNING-PATH.md](../LEARNING-PATH.md) |
-| Быстрый справочник | FAQ + план на 4 дня | [LEARNING-PATH.md, §11](../LEARNING-PATH.md) |
+| Быстрый справочник | FAQ + план на 5 дня | [LEARNING-PATH.md, §11](../LEARNING-PATH.md) |
 
 ### Понять глубже
 
@@ -395,7 +395,7 @@ IWE использует конкретные концепции из теори
 | Планирование дня | DayPlan к 08:00 с приоритетами и контекстом | [DP.SC.001](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.001-daily-planning.md) |
 | Планирование недели | WeekPlan (с секцией «Итоги W{N}») | [DP.SC.002](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.002-weekly-planning.md) |
 | Развитие и обучение | Q&A, проверка ДЗ, марафоны | [DP.SC.003](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.003-learning-and-development.md) |
-| Захват знаний | Fleeting notes → Pack | [DP.SC.004](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.004-knowledge-capture.md) |
+| Захват знаний | Fleeting notes → Pack | [DP.SC.005](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/08-service-clauses/DP.SC.005-knowledge-capture.md) |
 
 ### Совместимость и стоимость
 
@@ -411,4 +411,4 @@ IWE использует конкретные концепции из теори
 
 ---
 
-*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [FMT-exocortex-template](https://github.com/TserenTserenov/FMT-exocortex-template)*
+*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [DS-exocortex](https://github.com/TserenTserenov/DS-exocortex)*

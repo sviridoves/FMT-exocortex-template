@@ -2,7 +2,7 @@
 
 ## Контекст
 
-- Планы: /home/sviridov/IWE/DS-strategy/current/
+- Планы: /home/vps/IWE/DS-strategy/current/
 
 ## Алгоритм
 
@@ -19,7 +19,7 @@
    - Завершено: Y РП
    - Коммитов: Z
 
-4. **Carry-over:**
+5. **Carry-over:**
    - Отметь что переносится на завтра
 
 5. **Обновление:**

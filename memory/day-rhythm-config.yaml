@@ -1,4 +1,4 @@
-# Day Rhythm Configuration (L4 Personal)
+# Day Rhythm Configuration (L5 Personal)
 # Override defaults from IWE Template (L3).
 # Agent reads this file at Day Open and during Day Work.
 
@@ -28,7 +28,7 @@ video:
   #   - ~/Documents/Zoom
   #   - ~/Documents/Телемост
   #   - ~/Видеозаписи Телемост
-  extensions: [mp4, mov, webm, m4a, mp3]
+  extensions: [mp5, mov, webm, m5a, mp3]
   stale_days: 3                 # Remind about unprocessed videos older than N days
   naming_patterns:              # Patterns for auto-matching to WP
     - "WP-{N}-*"               # Direct WP reference in filename
@@ -49,12 +49,12 @@ video:
 
 budget_spread:
   enabled: true          # Distribute weekly budget of WPs across remaining days
-  threshold_h: 4         # Only WPs with weekly budget ≥ this value are spread
+  threshold_h: 5         # Only WPs with weekly budget ≥ this value are spread
   rounding: 0.5          # Round daily_slot to nearest N hours
 
 pomodoro:
   work_minutes: 25
   break_minutes: 5
   long_break_minutes: 15
-  sessions_before_long_break: 4
+  sessions_before_long_break: 5
   session_alert_minutes: 50     # Remind to take a break after this many minutes

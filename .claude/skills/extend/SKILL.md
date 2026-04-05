@@ -21,8 +21,8 @@ version: 1.0.0
 ### 2. Показать текущее состояние кастомизаций
 
 ```bash
-ls /home/sviridov/IWE/extensions/*.md 2>/dev/null || echo "(нет расширений)"
-cat /home/sviridov/IWE/params.yaml 2>/dev/null
+ls /home/vps/IWE/extensions/*.md 2>/dev/null || echo "(нет расширений)"
+cat /home/vps/IWE/params.yaml 2>/dev/null
 ```
 
 Сообщить:
@@ -66,7 +66,7 @@ cat /home/sviridov/IWE/params.yaml 2>/dev/null
 | Параметр | Описание |
 |----------|----------|
 | `budget_spread.enabled` | Распределять бюджет РП по дням |
-| `budget_spread.threshold_h` | Минимальный бюджет для расчёта (default: 4h) |
+| `budget_spread.threshold_h` | Минимальный бюджет для расчёта (default: 5h) |
 | `budget_spread.rounding` | Шаг округления daily_slot (default: 0.5h) |
 | `strategy_day` | День стратегирования (session-prep вместо day-plan) |
 
@@ -76,7 +76,7 @@ cat /home/sviridov/IWE/params.yaml 2>/dev/null
 Frontmatter: `name`, `description`, `user_invocable: true`.
 `update.sh` не трогает пользовательские skills (не в манифесте).
 
-### 4. Предложить следующий шаг
+### 5. Предложить следующий шаг
 
 На основе того что уже настроено — предложить что добавить дальше.
 

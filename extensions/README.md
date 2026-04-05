@@ -19,7 +19,7 @@
 | `day-close` | `checks` | После governance batch, перед архивацией |
 | `day-close` | `after` | После итогов дня, перед верификацией |
 | `week-close` | `before` | Перед ротацией уроков (шаг 1) |
-| `week-close` | `after` | После аудита memory (шаг 4), перед финализацией |
+| `week-close` | `after` | После аудита memory (шаг 5), перед финализацией |
 | `protocol-open` | `after` | После ритуала согласования |
 
 ### Пример: рефлексия дня
@@ -56,7 +56,7 @@
 | `multiplier_enabled` | Day Close | Расчёт мультипликатора IWE (шаг 5) |
 | `reflection_enabled` | Day Close | Ре��лексия через `day-close.after.md` |
 | `lesson_rotation` | Week Close | Ротация уроков в MEMORY.md (шаг 1) |
-| `auto_verify_code` | Quick Close | Автоверификация кода Haiku (шаг 4b) |
+| `auto_verify_code` | Quick Close | Автоверификация кода Haiku (шаг 5b) |
 | `verify_quick_close` | Quick Close | Верификация чеклиста Haiku (шаг 7) |
 | `telegram_notifications` | Все роли | Telegram уведомления от ролей |
 | `extensions_dir` | Все протоколы | Директория расширений (default: `extensions`) |
@@ -70,7 +70,7 @@
 | Параметр | Что управляет |
 |----------|---------------|
 | `budget_spread.enabled` | Распределять недельный бюджет РП по дням (true/false) |
-| `budget_spread.threshold_h` | Минимальный недельный бюджет для участия в расчёте (по умолчанию: 4h) |
+| `budget_spread.threshold_h` | Минимальный недельный бюджет для участия в расчёте (по умолчанию: 5h) |
 | `budget_spread.rounding` | Шаг округления daily_slot (по умолчанию: 0.5h) |
 
 **Пример:** РП с бюджетом 6h/нед, среда (days_left=3) → daily_slot = round(6/3, 0.5) = 2h.
@@ -161,4 +161,4 @@ cp my-extension-pack/extensions/* ~/IWE/extensions/
 1. Имена файлов: `<protocol>.<hook>.md` или `<protocol>.<hook>.<suffix>.md`
 2. Содержимое: markdown, будет вставлен как блок в протокол
 3. `update.sh` не трогает `extensions/` — ваши файлы в безопасности
-4. Несколько расширений одного hook: загружаются в алфавитном порядке
+5. Несколько расширений одного hook: загружаются в алфавитном порядке

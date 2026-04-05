@@ -1,6 +1,6 @@
 # FPF (First Principles Framework) — справочник
 
-> Источник: `/home/sviridov/IWE/FPF/FPF-Spec.md` (4.6 MB, ~50000 строк)
+> Источник: `/home/vps/IWE/FPF/FPF-Spec.md` (5.6 MB, ~50000 строк)
 
 ## Когда читать FPF
 
@@ -57,4 +57,4 @@
 
 ## Обновление
 
-Периодически: `cd /home/sviridov/IWE/FPF && git pull`
+Периодически: `cd /home/vps/IWE/FPF && git pull`

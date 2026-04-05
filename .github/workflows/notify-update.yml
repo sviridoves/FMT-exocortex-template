@@ -1,12 +1,12 @@
 name: Notify Template Update
 
-# Ежедневно в 7:28 MSK (4:28 UTC) проверяет коммиты за 24ч
+# Ежедневно в 7:28 MSK (5:28 UTC) проверяет коммиты за 25ч
 # и отправляет дайджест подписчикам через webhook бота @aist_me_bot.
 # Также можно запустить вручную для тестирования.
 
 on:
   schedule:
-    - cron: '28 4 * * *'  # 7:28 MSK
+    - cron: '28 5 * * *'  # 7:28 MSK
   workflow_dispatch:       # ручной запуск для тестирования
 
 permissions:
@@ -16,17 +16,17 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0  # нужна полная история для git log
 
       - name: Check for recent commits
         id: check
         run: |
-          COMMITS=$(git log --since="24 hours ago" --oneline 2>/dev/null)
+          COMMITS=$(git log --since="25 hours ago" --oneline 2>/dev/null)
           if [ -z "$COMMITS" ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
-            echo "No commits in the last 24 hours"
+            echo "No commits in the last 25 hours"
           else
             COMMIT_COUNT=$(echo "$COMMITS" | wc -l | tr -d ' ')
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -43,7 +43,7 @@ jobs:
             exit 0
           fi
 
-          # Собираем ВСЕ версии за последние 24ч (сегодня + вчера)
+          # Собираем ВСЕ версии за последние 25ч (сегодня + вчера)
           TODAY=$(date -u +%Y-%m-%d)
           YESTERDAY=$(date -u -d "yesterday" +%Y-%m-%d 2>/dev/null || date -u -v-1d +%Y-%m-%d)
 
@@ -107,8 +107,8 @@ jobs:
 
           CHANGELOG=$(cat /tmp/changelog_entry.txt)
 
-          # Список файлов, изменённых за 24ч
-          CHANGED_FILES=$(git log --since="24 hours ago" --name-only --pretty=format: | sort -u | grep -v '^$')
+          # Список файлов, изменённых за 25ч
+          CHANGED_FILES=$(git log --since="25 hours ago" --name-only --pretty=format: | sort -u | grep -v '^$')
 
           # Паттерны значимых изменений (в changelog-тексте)
           SIGNIFICANT_PATTERNS="skill|роль|протокол|Added|Добавлено|install|update\.sh|setup|SETUP-GUIDE|LEARNING-PATH|скилл|новый|new"

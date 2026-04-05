@@ -22,10 +22,10 @@
 
 ### WORKPLAN.md — Hub-and-Spoke
 
-Каждый репозиторий в `/home/sviridov/IWE/` содержит `WORKPLAN.md` в корне с текущими РП.
+Каждый репозиторий в `/home/vps/IWE/` содержит `WORKPLAN.md` в корне с текущими РП.
 
 **Агрегация:** При создании плана дня/недели Стратег:
-1. Обходит все `/home/sviridov/IWE/*/WORKPLAN.md`
+1. Обходит все `/home/vps/IWE/*/WORKPLAN.md`
 2. Собирает РП со статусом pending/in-progress
 3. Формирует агрегированный план в `current/`
 
@@ -38,16 +38,16 @@
 **КРИТИЧЕСКИ ВАЖНО:** При сборе коммитов ВСЕГДА проверять ВСЕ репозитории:
 
 ```bash
-for repo in $(ls /home/sviridov/IWE/); do
-  if [ -d /home/sviridov/IWE/$repo/.git ]; then
-    echo "=== $repo ===" && cd /home/sviridov/IWE/$repo && git log --oneline --since="1 week ago" 2>/dev/null
+for repo in $(ls /home/vps/IWE/); do
+  if [ -d /home/vps/IWE/$repo/.git ]; then
+    echo "=== $repo ===" && cd /home/vps/IWE/$repo && git log --oneline --since="1 week ago" 2>/dev/null
   fi
 done
 ```
 
 ## Work-Product Gate (правило РП-шлюза)
 
-> **Полное описание:** `/home/sviridov/IWE/CLAUDE.md` секция 2.
+> **Полное описание:** `/home/vps/IWE/CLAUDE.md` секция 2.
 
 **БЛОКИРУЮЩЕЕ ПРАВИЛО.** Выполняется ДО ЛЮБОГО действия по задаче.
 
@@ -56,7 +56,7 @@ done
 1. **Не хранить предметные знания** — это Pack
 2. **Не дублировать командные планы** — они в DS-ecosystem-development/
 3. **РП = артефакт с критериями** — не описание, не намерение
-4. **Учёт ≠ планирование** — факты отдельно от намерений
+5. **Учёт ≠ планирование** — факты отдельно от намерений
 
 ## Структура файлов
 

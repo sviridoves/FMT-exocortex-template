@@ -4,7 +4,7 @@
 # Day Close → ПРЯМАЯ ИНСТРУКЦИЯ вызвать /run-protocol day-close (не напоминание).
 # Session Close → compact-чеклист.
 # Read-only: только JSON additionalContext.
-# Версия: 2026-04-03. Fix: multiline prompt ломал jq (6-й инцидент 3 апр).
+# Версия: 2026-05-03. Fix: multiline prompt ломал jq (6-й инцидент 3 апр).
 
 INPUT=$(cat)
 # Устойчивость к многострочным промптам: literal \n в JSON value

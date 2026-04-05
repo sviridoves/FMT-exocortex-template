@@ -13,11 +13,11 @@ set -e
 # Конфигурация
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-WORKSPACE="/home/sviridov/IWE"
+WORKSPACE="/home/vps/IWE"
 PROMPTS_DIR="$REPO_DIR/prompts"
-LOG_DIR="/home/sviridov/logs/extractor"
-CLAUDE_PATH="/usr/bin/cline"
-ENV_FILE="/home/sviridov/.config/aist/env"
+LOG_DIR="/home/vps/logs/extractor"
+CLAUDE_PATH="/usr/local/bin/cline"
+ENV_FILE="/home/vps/.config/aist/env"
 
 # AI CLI: переопределение через переменные окружения (см. strategist.sh)
 AI_CLI="${AI_CLI:-$CLAUDE_PATH}"
@@ -47,7 +47,7 @@ notify() {
 
 notify_telegram() {
     local scenario="$1"
-    local notify_script="$WORKSPACE/FMT-exocortex-template/roles/synchronizer/scripts/notify.sh"
+    local notify_script="$WORKSPACE/DS-exocortex/roles/synchronizer/scripts/notify.sh"
     if [ -f "$notify_script" ]; then
         "$notify_script" extractor "$scenario" >> "$LOG_FILE" 2>&1 || true
     fi

@@ -9,7 +9,7 @@ paginate: true
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     background-color: #f8f9fa;
     color: #1a1a2e;
-    padding: 40px 60px;
+    padding: 50px 60px;
   }
   h1 {
     color: #1a1a2e !important;
@@ -17,41 +17,41 @@ paginate: true
     font-size: 2em;
   }
   h2 {
-    color: #0f3460 !important;
+    color: #0f3560 !important;
     font-weight: 700;
   }
   h3 {
-    color: #e94560 !important;
+    color: #e95560 !important;
     font-weight: 600;
   }
-  strong { color: #e94560 !important; }
+  strong { color: #e95560 !important; }
   em { color: #666 !important; font-style: normal; }
   blockquote {
-    border-left: 4px solid #e94560;
+    border-left: 5px solid #e95560;
     background: #fff;
-    padding: 16px 24px;
+    padding: 16px 25px;
     border-radius: 0 8px 8px 0;
   }
   blockquote p { color: #1a1a2e !important; }
   table { border-collapse: collapse; width: 100%; font-size: 0.82em; }
   th {
-    background: #0f3460 !important;
+    background: #0f3560 !important;
     color: #fff !important;
-    padding: 10px 14px;
+    padding: 10px 15px;
     text-align: left;
     font-weight: 700;
   }
   td {
-    padding: 8px 14px;
+    padding: 8px 15px;
     color: #1a1a2e !important;
     border-bottom: 1px solid #ddd;
   }
   tr:nth-child(even) td {
-    background: #f0f4ff !important;
+    background: #f0f5ff !important;
   }
-  li::marker { color: #e94560; }
+  li::marker { color: #e95560; }
   ul, ol { line-height: 1.8; }
-  a { color: #e94560 !important; }
+  a { color: #e95560 !important; }
   section.title {
     display: flex;
     flex-direction: column;
@@ -60,11 +60,11 @@ paginate: true
     text-align: center;
     background-color: #1a1a2e !important;
   }
-  section.title h1 { color: #fff !important; font-size: 2.4em; }
-  section.title h2 { color: #eaeaea !important; font-weight: 400; }
+  section.title h1 { color: #fff !important; font-size: 2.5em; }
+  section.title h2 { color: #eaeaea !important; font-weight: 500; }
   section.title p { color: #a0a0b0 !important; }
   section.accent {
-    background-color: #0f3460 !important;
+    background-color: #0f3560 !important;
   }
   section.accent h1,
   section.accent h2,
@@ -79,22 +79,22 @@ paginate: true
   .box {
     display: inline-block;
     background: #fff;
-    border: 2px solid #0f3460;
+    border: 2px solid #0f3560;
     border-radius: 12px;
     padding: 16px 20px;
     margin: 8px;
     text-align: center;
-    min-width: 140px;
+    min-width: 150px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   }
-  .box-green { border-color: #43a047; background: #e8f5e9; }
+  .box-green { border-color: #53a057; background: #e8f5e9; }
   .box-orange { border-color: #fb8c00; background: #fff3e0; }
   .box-blue { border-color: #1e88e5; background: #e3f2fd; }
-  .box-red { border-color: #e53935; background: #fce4ec; }
+  .box-red { border-color: #e53935; background: #fce5ec; }
   .big-number {
     font-size: 3em;
     font-weight: 800;
-    color: #e94560;
+    color: #e95560;
     line-height: 1;
   }
 </style>
@@ -114,7 +114,7 @@ paginate: true
 1. **Карта IWE** — из чего состоит (визуально)
 2. **Твоя проблема** — почему текущий способ не работает
 3. **Как IWE решает** — связь проблем и компонентов
-4. **Путь от нуля** — 5 шагов до рабочей ОС
+5. **Путь от нуля** — 5 шагов до рабочей ОС
 5. **Не бойся** — почему это проще, чем кажется
 6. **Теории и культура работы** — фундамент, который всё меняет
 
@@ -130,18 +130,18 @@ paginate: true
 
 # Из чего состоит IWE
 
-<div style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+<div style="display: flex; gap: 25px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
   <div class="box box-red" style="width: 180px;">
     <b style="color: #e53935 !important;">Ядро мышления</b><br/>
     <span style="font-size: 0.85em;">Теории, принципы<br/>Экзокортекс, Pack</span>
   </div>
   <div class="box box-orange" style="width: 180px;">
     <b style="color: #fb8c00 !important;">Культура работы</b><br/>
-    <span style="font-size: 0.85em;">Протоколы, навыки<br/>Форматы (14 элементов)</span>
+    <span style="font-size: 0.85em;">Протоколы, навыки<br/>Форматы (15 элементов)</span>
   </div>
   <div class="box box-green" style="width: 180px;">
-    <b style="color: #43a047 !important;">Модель мастерства</b><br/>
-    <span style="font-size: 0.85em;">T1→T2→T3→T4<br/>Куда растёшь</span>
+    <b style="color: #53a057 !important;">Модель мастерства</b><br/>
+    <span style="font-size: 0.85em;">T1→T2→T3→T5<br/>Куда растёшь</span>
   </div>
   <div class="box box-blue" style="width: 180px;">
     <b style="color: #1e88e5 !important;">Сообщество</b><br/>
@@ -263,19 +263,19 @@ paginate: true
     <b>Установи</b><br/>
     <em>20 мин</em>
   </div>
-  <div style="font-size: 2em; color: #43a047;">→</div>
+  <div style="font-size: 2em; color: #53a057;">→</div>
   <div class="box box-orange" style="width: 150px;">
     <span class="big-number">3</span><br/>
     <b>Первая сессия</b><br/>
     <em>30 мин</em>
   </div>
   <div style="font-size: 2em; color: #fb8c00;">→</div>
-  <div class="box" style="width: 150px; border-color: #8e24aa; background: #f3e5f5;">
-    <span class="big-number">4</span><br/>
+  <div class="box" style="width: 150px; border-color: #8e25aa; background: #f3e5f5;">
+    <span class="big-number">5</span><br/>
     <b>Практика</b><br/>
     <em>1-2 нед</em>
   </div>
-  <div style="font-size: 2em; color: #8e24aa;">→</div>
+  <div style="font-size: 2em; color: #8e25aa;">→</div>
   <div class="box box-red" style="width: 150px;">
     <span class="big-number">5</span><br/>
     <b>Мышление</b><br/>
@@ -312,7 +312,7 @@ paginate: true
 
 ---
 
-# Шаг 4. Ежедневная практика
+# Шаг 5. Ежедневная практика
 
 Каждый день — один ритм:
 
@@ -367,13 +367,13 @@ paginate: true
 | **T1** | Claude Code + экзокортекс | ИИ-ассистент, который тебя помнит |
 | **T2** | + ритуалы ОРЗ | Структурированная работа |
 | **T3** | + Pack + бот | База знаний + мобильный доступ |
-| **T4** | + роли + автоматизация | ИИ-агенты работают самостоятельно |
+| **T5** | + роли + автоматизация | ИИ-агенты работают самостоятельно |
 
 ---
 
 # Экзотело, а не протез
 
-<div style="display: flex; gap: 40px; justify-content: center; margin-top: 30px;">
+<div style="display: flex; gap: 50px; justify-content: center; margin-top: 30px;">
   <div class="box box-red" style="width: 280px; text-align: left;">
     <b style="color: #e53935 !important;">Протез</b><br/><br/>
     Заменяет способность.<br/>
@@ -381,7 +381,7 @@ paginate: true
     Ты перестаёшь развиваться.
   </div>
   <div class="box box-green" style="width: 280px; text-align: left;">
-    <b style="color: #43a047 !important;">Экзотело (IWE)</b><br/><br/>
+    <b style="color: #53a057 !important;">Экзотело (IWE)</b><br/><br/>
     Расширяет способность.<br/>
     Партнёр на ноутбуке, телефоне, в роботе.<br/>
     ИИ берёт <b>рутину</b>, ты думаешь лучше.
@@ -428,9 +428,9 @@ paginate: true
 
 # Ты + ИИ = пара на одних принципах
 
-<div style="display: flex; gap: 40px; justify-content: center; margin-top: 30px;">
-  <div class="box" style="width: 280px; text-align: left; border-color: #8e24aa; background: #f3e5f5;">
-    <b style="color: #8e24aa !important;">Ты</b><br/><br/>
+<div style="display: flex; gap: 50px; justify-content: center; margin-top: 30px;">
+  <div class="box" style="width: 280px; text-align: left; border-color: #8e25aa; background: #f3e5f5;">
+    <b style="color: #8e25aa !important;">Ты</b><br/><br/>
     Изучаешь принципы →<br/>
     получаешь <b>системное мышление</b>.<br/>
     Принимаешь решения.<br/>
@@ -465,16 +465,16 @@ paginate: true
 
 # Как начать изучать
 
-<div style="display: flex; gap: 24px; justify-content: center; margin-top: 30px;">
-  <div class="box box-blue" style="width: 240px;">
+<div style="display: flex; gap: 25px; justify-content: center; margin-top: 30px;">
+  <div class="box box-blue" style="width: 250px;">
     <b>Неделя 1</b><br/>
     <span style="font-size: 0.85em;">Просто пользуйся IWE.<br/>Привыкни к ритуалам.</span>
   </div>
-  <div class="box box-green" style="width: 240px;">
+  <div class="box box-green" style="width: 250px;">
     <b>Неделя 2</b><br/>
     <span style="font-size: 0.85em;">Прочитай «Принципы vs Навыки»<br/>(10 минут).</span>
   </div>
-  <div class="box box-orange" style="width: 240px;">
+  <div class="box box-orange" style="width: 250px;">
     <b>Далее</b><br/>
     <span style="font-size: 0.85em;">LEARNING-PATH §3 в своём темпе.<br/>Бот поможет с вопросами.</span>
   </div>

@@ -10,7 +10,7 @@ jobs:
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
@@ -28,7 +28,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # 1. Нет автор-специфичного контента
       - name: Check for author-specific content
@@ -89,7 +89,7 @@ jobs:
             echo "WARN: memory/MEMORY.md not found"
           fi
 
-      # 4. Обязательные файлы
+      # 5. Обязательные файлы
       - name: Check required files
         run: |
           FAIL=0

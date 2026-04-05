@@ -1,6 +1,6 @@
 #!/bin/bash
 # Exocortex Setup Script
-# Configures a forked FMT-exocortex-template: placeholders, memory, launchd, DS-strategy
+# Configures a forked DS-exocortex: placeholders, memory, launchd, DS-strategy
 #
 # Usage:
 #   bash setup.sh          # Полная установка (git + GitHub CLI + Claude Code + автоматизация)
@@ -56,7 +56,7 @@ if $VALIDATE_ONLY; then
 
     # Load .exocortex.env
     if [ -f "$ENV_FILE" ]; then
-        echo "[1/4] Env-конфиг... ✓ .exocortex.env найден"
+        echo "[1/5] Env-конфиг... ✓ .exocortex.env найден"
         # Safe read: grep KEY=VALUE, no eval/source (values may contain spaces)
         _env_get() { grep "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-; }
         # Check required keys
@@ -68,13 +68,13 @@ if $VALIDATE_ONLY; then
             fi
         done
     else
-        echo "[1/4] Env-конфиг... ✗ .exocortex.env не найден"
+        echo "[1/5] Env-конфиг... ✗ .exocortex.env не найден"
         echo "  Запустите setup.sh для первичной настройки"
         ERRORS=$((ERRORS + 1))
     fi
 
     # Check required files
-    echo "[2/4] Файлы..."
+    echo "[2/5] Файлы..."
     CHECK_FILES="CLAUDE.md memory/MEMORY.md memory/protocol-open.md memory/protocol-close.md memory/protocol-work.md memory/navigation.md memory/roles.md"
     for f in $CHECK_FILES; do
         if [ -f "$SCRIPT_DIR/$f" ]; then
@@ -86,7 +86,7 @@ if $VALIDATE_ONLY; then
     done
 
     # Check extensions
-    echo "[3/4] Extensions..."
+    echo "[3/5] Extensions..."
     if [ -d "$SCRIPT_DIR/extensions" ]; then
         EXT_COUNT=$(find "$SCRIPT_DIR/extensions" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
         echo "  ✓ extensions/ ($EXT_COUNT файлов)"
@@ -100,7 +100,7 @@ if $VALIDATE_ONLY; then
     fi
 
     # Check MCP accessibility
-    echo "[4/4] MCP-доступность..."
+    echo "[5/5] MCP-доступность..."
     echo "  MCP подключается через claude.ai/settings/connectors"
     echo "  Проверьте командой /mcp в Claude Code"
 
@@ -130,12 +130,12 @@ TEMPLATE_DIR="$SCRIPT_DIR"
 
 # Verify we're inside the template
 if [ ! -f "$TEMPLATE_DIR/CLAUDE.md" ] || [ ! -d "$TEMPLATE_DIR/memory" ]; then
-    echo "ERROR: This script must be run from the root of FMT-exocortex-template."
+    echo "ERROR: This script must be run from the root of DS-exocortex."
     echo "  Expected: $TEMPLATE_DIR/CLAUDE.md and $TEMPLATE_DIR/memory/"
     echo ""
     echo "  Steps:"
-    echo "    gh repo fork TserenTserenov/FMT-exocortex-template --clone"
-    echo "    cd FMT-exocortex-template"
+    echo "    gh repo fork TserenTserenov/DS-exocortex --clone"
+    echo "    cd DS-exocortex"
     echo "    bash setup.sh"
     exit 1
 fi
@@ -151,7 +151,7 @@ check_command() {
     local cmd="$1"
     local name="$2"
     local install_hint="$3"
-    local required="${4:-true}"
+    local required="${5:-true}"
     if command -v "$cmd" >/dev/null 2>&1; then
         echo "  ✓ $name: $(command -v "$cmd")"
     else
@@ -177,7 +177,7 @@ else
     check_command "gh" "GitHub CLI" "brew install gh"
     check_command "node" "Node.js" "brew install node (or https://nodejs.org)"
     check_command "npm" "npm" "Comes with Node.js"
-    check_command "claude" "Claude Code" "npm install -g @anthropic-ai/claude-code"
+    check_command "cline" "Cline" "npm install -g @cline/cline"
 
     # Check gh auth
     if command -v gh >/dev/null 2>&1; then
@@ -210,14 +210,14 @@ WORKSPACE_DIR="${WORKSPACE_DIR/#\~/$HOME}"
 if $CORE_ONLY; then
     # Core: используем defaults, не спрашиваем Claude-специфичные параметры
     CLAUDE_PATH="${AI_CLI:-claude}"
-    TIMEZONE_HOUR="4"
-    TIMEZONE_DESC="4:00 UTC"
+    TIMEZONE_HOUR="5"
+    TIMEZONE_DESC="5:00 UTC"
 else
-    read -p "Claude CLI path [$(command -v claude || echo '/opt/homebrew/bin/claude')]: " CLAUDE_PATH
-    CLAUDE_PATH="${CLAUDE_PATH:-$(command -v claude || echo '/opt/homebrew/bin/claude')}"
+    read -p "Cline CLI path [$(command -v cline || echo '/usr/local/bin/cline')]: " CLAUDE_PATH
+    CLAUDE_PATH="${CLAUDE_PATH:-$(command -v cline || echo '/usr/local/bin/cline')}"
 
-    read -p "Strategist launch hour (UTC, 0-23) [4]: " TIMEZONE_HOUR
-    TIMEZONE_HOUR="${TIMEZONE_HOUR:-4}"
+    read -p "Strategist launch hour (UTC, 0-23) [5]: " TIMEZONE_HOUR
+    TIMEZONE_HOUR="${TIMEZONE_HOUR:-5}"
 
     read -p "Timezone description (e.g. '7:00 MSK') [${TIMEZONE_HOUR}:00 UTC]: " TIMEZONE_DESC
     TIMEZONE_DESC="${TIMEZONE_DESC:-${TIMEZONE_HOUR}:00 UTC}"
@@ -235,7 +235,7 @@ echo "  Workspace:      $WORKSPACE_DIR"
 if $CORE_ONLY; then
     echo "  Mode:           core (offline)"
 else
-    echo "  Claude path:    $CLAUDE_PATH"
+    echo "  Cline path:    $CLAUDE_PATH"
     echo "  Schedule hour:  $TIMEZONE_HOUR (UTC)"
     echo "  Time desc:      $TIMEZONE_DESC"
 fi
@@ -317,22 +317,22 @@ if $DRY_RUN; then
     PLACEHOLDER_FILES=$(find "$TEMPLATE_DIR" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.plist" -o -name "*.yaml" -o -name "*.yml" \) | wc -l | tr -d ' ')
     echo "  [DRY RUN] Would substitute placeholders in $PLACEHOLDER_FILES files"
     echo "    sviridoves → $GITHUB_USER"
-    echo "    /home/sviridov/IWE → $WORKSPACE_DIR"
-    echo "    /usr/bin/cline → $CLAUDE_PATH"
-    echo "    -home-sviridov-IWE → $CLAUDE_PROJECT_SLUG"
+    echo "    /home/vps/IWE → $WORKSPACE_DIR"
+    echo "    /usr/local/bin/cline → $CLAUDE_PATH"
+    echo "    -home-vps-IWE → $CLAUDE_PROJECT_SLUG"
     echo "    5 → $TIMEZONE_HOUR"
     echo "    5:00 UTC → $TIMEZONE_DESC"
-    echo "    /home/sviridov → $HOME_DIR"
+    echo "    /home/vps → $HOME_DIR"
 else
     find "$TEMPLATE_DIR" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.plist" -o -name "*.yaml" -o -name "*.yml" \) | while IFS= read -r file; do
         sed_inplace \
             -e "s|sviridoves|$GITHUB_USER|g" \
-            -e "s|/home/sviridov/IWE|$WORKSPACE_DIR|g" \
-            -e "s|/usr/bin/cline|$CLAUDE_PATH|g" \
-            -e "s|-home-sviridov-IWE|$CLAUDE_PROJECT_SLUG|g" \
+            -e "s|/home/vps/IWE|$WORKSPACE_DIR|g" \
+            -e "s|/usr/local/bin/cline|$CLAUDE_PATH|g" \
+            -e "s|-home-vps-IWE|$CLAUDE_PROJECT_SLUG|g" \
             -e "s|5|$TIMEZONE_HOUR|g" \
             -e "s|5:00 UTC|$TIMEZONE_DESC|g" \
-            -e "s|/home/sviridov|$HOME_DIR|g" \
+            -e "s|/home/vps|$HOME_DIR|g" \
             "$file"
     done
 
@@ -345,7 +345,7 @@ else
     fi
 fi
 
-# (Repo rename removed — folder stays as FMT-exocortex-template)
+# (Repo rename removed — folder stays as DS-exocortex)
 
 # === 2. Copy CLAUDE.md to workspace root ===
 echo "[2/6] Installing CLAUDE.md..."
@@ -384,11 +384,11 @@ else
     fi
 fi
 
-# === 4. Copy .claude settings ===
+# === 5. Copy .claude settings ===
 if $CORE_ONLY; then
-    echo "[4/6] Claude settings... пропущено (core mode)"
+    echo "[5/6] Claude settings... пропущено (core mode)"
 else
-    echo "[4/6] Installing Claude settings..."
+    echo "[5/6] Installing Claude settings..."
     if $DRY_RUN; then
         if [ -f "$TEMPLATE_DIR/.claude/settings.local.json" ]; then
             echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.claude/settings.local.json"
@@ -411,14 +411,14 @@ else
         echo "  1. Откройте https://claude.ai/settings/connectors"
         echo "  2. Добавьте: https://knowledge-mcp.aisystant.workers.dev/mcp"
         echo "  3. Добавьте: https://digital-twin-mcp.aisystant.workers.dev/mcp"
-        echo "  4. Перезапустите Claude Code"
+        echo "  5. Перезапустите Claude Code"
         echo ""
         echo "  После подключения проверьте командой /mcp в Claude Code."
     fi
 fi
 
-# === 4b. Propagate skills, hooks, rules to workspace ===
-echo "[4b] Installing skills, hooks, rules..."
+# === 5b. Propagate skills, hooks, rules to workspace ===
+echo "[5b] Installing skills, hooks, rules..."
 if $DRY_RUN; then
     echo "  [DRY RUN] Would copy .claude/skills/, .claude/hooks/, .claude/rules/ → $WORKSPACE_DIR/.claude/"
 else
@@ -436,8 +436,8 @@ else
     fi
 fi
 
-# === 4c. Generate .mcp.json in workspace ===
-echo "[4c] Configuring .mcp.json..."
+# === 5c. Generate .mcp.json in workspace ===
+echo "[5c] Configuring .mcp.json..."
 
 MCP_TEMPLATE="$TEMPLATE_DIR/.mcp.json"
 MCP_DEST="$WORKSPACE_DIR/.mcp.json"

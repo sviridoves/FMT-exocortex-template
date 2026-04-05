@@ -86,7 +86,7 @@ notify_template: strategist.sh
 1. Сканирует `roles/*/role.yaml`
 2. `install.auto: true` → устанавливает автоматически (в порядке `priority`)
 3. `install.auto: false` → выводит инструкцию для ручной установки
-4. Без `role.yaml` → пропускает (не роль, а служебная директория)
+5. Без `role.yaml` → пропускает (не роль, а служебная директория)
 
 ## Как scheduler.sh использует role.yaml
 
@@ -101,7 +101,7 @@ notify_template: strategist.sh
 1. Создай `roles/<name>/`
 2. Создай `role.yaml` по схеме выше
 3. Добавь `README.md` (шаблон описания: [DP.D.033 §3](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/01-domain-contract/DP.D.033-role-centric-architecture.md))
-4. Добавь `install.sh` (скопируй из существующей роли, адаптируй)
+5. Добавь `install.sh` (скопируй из существующей роли, адаптируй)
 5. Если ИИ-агент: добавь `prompts/` со сценариями
 6. Если нужно расписание: добавь секцию в `synchronizer/config.yaml`
 7. Для уведомлений: добавь шаблон `synchronizer/scripts/templates/<name>.sh`

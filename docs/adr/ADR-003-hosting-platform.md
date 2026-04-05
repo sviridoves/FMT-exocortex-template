@@ -2,7 +2,7 @@
 
 **Статус:** Принято (спецификация)
 **Дата:** 2026-03-29
-**Контекст:** WP-180 Ф4, FMT-exocortex-template, DP.EXOCORTEX.001
+**Контекст:** WP-180 Ф5, DS-exocortex, DP.EXOCORTEX.001
 
 ---
 
@@ -36,7 +36,7 @@ Git = хранилище и история             Git = хранилище 
 Обновление: bash update.sh            Обновление: агент предлагает автоматически
 ```
 
-Оба слоя работают с одним и тем же дистрибутивом (FMT-exocortex-template). Платформа-хостинг — это **тонкий слой** поверх, не отдельный продукт.
+Оба слоя работают с одним и тем же дистрибутивом (DS-exocortex). Платформа-хостинг — это **тонкий слой** поверх, не отдельный продукт.
 
 ### Архитектура платформы-хостинга
 
@@ -53,7 +53,7 @@ Git = хранилище и история             Git = хранилище 
 │  GET  /export           — git bundle (полный экспорт)   │
 ├─────────────────────────────────────────────────────────┤
 │  Git-репозиторий пользователя (приватный)               │
-│  • Тот же FMT-exocortex-template fork                   │
+│  • Тот же DS-exocortex fork                   │
 │  • Хранится на платформе (или GitHub пользователя)      │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -65,10 +65,10 @@ Git = хранилище и история             Git = хранилище 
 | Уровень | Что входит | Что делает setup.sh | Время входа |
 |---------|------------|---------------------|-------------|
 | **T1** | git + CLAUDE.md + memory. LLM через платформу | Шаги 1-3 (placeholders, CLAUDE.md, memory) | ≤15 мин |
-| **T2** | + ритуалы ОРЗ + extensions/ + params.yaml | + шаг 4b (skills, hooks) + шаг 6 (DS-strategy) | +30 мин |
+| **T2** | + ритуалы ОРЗ + extensions/ + params.yaml | + шаг 5b (skills, hooks) + шаг 6 (DS-strategy) | +30 мин |
 | **T3** | + Pack + ЦД (через бота) | + инструкции по Pack + бот-онбординг | +1h |
-| **T4 Direct** | + роли + MCP + launchd (требует свой API-ключ) | + шаг 5 (роли, автоматизация) | +1h |
-| **T4 Gateway** | + роли + Gateway URL + GitHub OAuth (без CLI) | + GitHub OAuth + MCP-коннектор | +30 мин |
+| **T5 Direct** | + роли + MCP + launchd (требует свой API-ключ) | + шаг 5 (роли, автоматизация) | +1h |
+| **T5 Gateway** | + роли + Gateway URL + GitHub OAuth (без CLI) | + GitHub OAuth + MCP-коннектор | +30 мин |
 
 **Ключевой принцип:** каждый следующий уровень — не замена предыдущего, а добавление. `setup.sh --level=T2` дополняет T1-установку.
 
@@ -100,7 +100,7 @@ bash setup.sh --level=T2 --yes
 ```bash
 # Полный экспорт: git clone = все файлы + история
 git clone https://hosting.iwe.ai/alice/my-exocortex ~/IWE/my-exocortex
-cd ~/IWE/my-exocortex && bash setup.sh --level=T4
+cd ~/IWE/my-exocortex && bash setup.sh --level=T5
 ```
 
 Это гарантирует vendor lock-in = 0.
@@ -118,23 +118,23 @@ Vagrant-образ = третий способ доставки (для DevOps-�
 
 | # | Артефакт | Уровень | Зависимость |
 |---|----------|---------|-------------|
-| 1 | `setup.sh --yes` — неинтерактивный режим | Платформа | WP-180 Ф4 ✅ (`--level` добавлен) |
-| 2 | `setup.sh --level=TX` — повышение уровня | Платформа | WP-180 Ф4 ✅ |
+| 1 | `setup.sh --yes` — неинтерактивный режим | Платформа | WP-180 Ф5 ✅ (`--level` добавлен) |
+| 2 | `setup.sh --level=TX` — повышение уровня | Платформа | WP-180 Ф5 ✅ |
 | 3 | Веб-интерфейс (чат → агент-онбордер) | Хостинг | WP-189 (MCP) |
-| 4 | API хостинга (POST /setup, POST /update, GET /export) | Хостинг | Отдельный WP |
+| 5 | API хостинга (POST /setup, POST /update, GET /export) | Хостинг | Отдельный WP |
 | 5 | Vagrant-образ | Доставка | Отдельный WP |
 
 ## Обновление (02 апреля 2026)
 
 **Новые решения (DP.ARCH.002 + DP.SC.112):**
 
-1. **Trial 30 дней = полный T1-T4.** Пользователю не нужна подписка для установки IWE.
+1. **Trial 30 дней = полный T1-T5.** Пользователю не нужна подписка для установки IWE.
 2. **Платформенный LLM Proxy (WP-200).** Пользователю НЕ нужен свой API-ключ Anthropic/OpenAI. Платформа предоставляет AI-модели как сервис (включено в подписку и триал). `PLATFORM_LLM_PROXY_URL` вместо обязательного `ANTHROPIC_API_KEY`.
-3. **T4 = два режима.** `--mode=direct` (Claude Code CLI + MCP + launchd) или `--mode=gateway` (Gateway URL + GitHub OAuth + MCP-коннектор). Оба бесплатны.
-4. **GitHub OAuth -- явный шаг онбординга T4 Gateway.** Платформа форкает FMT-exocortex-template автоматически.
-5. **Gateway = полный T4 (принцип паритета, DP.IWE.003 §8).** Серверные агенты (WP-201) работают на платформе.
+3. **T5 = два режима.** `--mode=direct` (Claude Code CLI + MCP + launchd) или `--mode=gateway` (Gateway URL + GitHub OAuth + MCP-коннектор). Оба бесплатны.
+5. **GitHub OAuth -- явный шаг онбординга T5 Gateway.** Платформа форкает DS-exocortex автоматически.
+5. **Gateway = полный T5 (принцип паритета, DP.IWE.003 §8).** Серверные агенты (WP-201) работают на платформе.
 
-**Новые переменные .exocortex.env:** `T4_MODE`, `PLATFORM_LLM_PROXY_URL`, `GITHUB_TOKEN`, `GATEWAY_URL`.
+**Новые переменные .exocortex.env:** `T5_MODE`, `PLATFORM_LLM_PROXY_URL`, `GITHUB_TOKEN`, `GATEWAY_URL`.
 
 ## Решение не принято: «v2 с нуля»
 

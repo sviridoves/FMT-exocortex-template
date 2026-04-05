@@ -4,7 +4,7 @@
 
 ## Контекст
 
-- Планы: /home/sviridov/IWE/DS-strategy/current/
+- Планы: /home/vps/IWE/DS-strategy/current/
 
 ## Алгоритм
 
@@ -24,7 +24,7 @@
    - `unplanned` — не в приоритетах
    - `urgent` — срочно
 
-4. **Рекомендация:**
+5. **Рекомендация:**
    - in-plan → покажи где, предложи начать
    - aligned → предложи добавить в план
    - unplanned → предупреди о смене фокуса

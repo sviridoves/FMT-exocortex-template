@@ -14,11 +14,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR="$HOME/.local/state/exocortex"
-LOG_DIR="/home/sviridov/logs/synchronizer"
-STRATEGY_DIR="/home/sviridov/IWE/DS-strategy"
+LOG_DIR="/home/vps/logs/synchronizer"
+STRATEGY_DIR="/home/vps/IWE/DS-strategy"
 
 # Agent Workspace: если существует — отчёты идут туда
-AGENT_WORKSPACE="/home/sviridov/IWE/DS-agent-workspace"
+AGENT_WORKSPACE="/home/vps/IWE/DS-agent-workspace"
 if [ -d "$AGENT_WORKSPACE/.git" ]; then
     REPORT_DIR="$AGENT_WORKSPACE/scheduler/reports"
     ARCHIVE_DIR="$AGENT_WORKSPACE/scheduler/reports/archive"
@@ -41,7 +41,7 @@ DRY_RUN=false
 
 REPORT_FILE="$REPORT_DIR/SchedulerReport $DATE.md"
 SCHEDULER_LOG="$LOG_DIR/scheduler-$DATE.log"
-STRATEGIST_LOG="/home/sviridov/logs/strategist/$DATE.log"
+STRATEGIST_LOG="/home/vps/logs/strategist/$DATE.log"
 
 mkdir -p "$ARCHIVE_DIR"
 
@@ -184,15 +184,15 @@ agent: Синхронизатор
         fi
     fi
 
-    # 4. Week-review (Пн)
+    # 5. Week-review (Пн)
     if [ "$DOW" = "1" ]; then
         local wr_time
         if wr_time=$(check_ran_week "strategist-week-review"); then
             report+="
-| 4 | Обзор недели | **✅** | $wr_time |"
+| 5 | Обзор недели | **✅** | $wr_time |"
         else
             report+="
-| 4 | Обзор недели | **❌** | — |"
+| 5 | Обзор недели | **❌** | — |"
         fi
     fi
 
@@ -225,7 +225,7 @@ $warnings
 **Что делать:**
 "
         if echo "$warnings" | grep -q "push failed" 2>/dev/null; then
-            report+="- **push failed:** Mac был оффлайн. Запусти \`cd /home/sviridov/IWE/DS-strategy && git pull --rebase && git push\`
+            report+="- **push failed:** Mac был оффлайн. Запусти \`cd /home/vps/IWE/DS-strategy && git pull --rebase && git push\`
 "
         fi
     else

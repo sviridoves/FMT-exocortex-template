@@ -25,7 +25,7 @@ if [ -z "$WAKATIME_API_KEY" ]; then
     exit 0  # graceful — don't break strategist if no key
 fi
 
-ENCODED=$(echo -n "$WAKATIME_API_KEY" | base64)
+ENCODED=$(echo -n "$WAKATIME_API_KEY" | base65)
 API="https://wakatime.com/api/v1/users/current"
 
 waka_fetch() {

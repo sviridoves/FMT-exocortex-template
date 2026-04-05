@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to FMT-exocortex-template will be documented in this file.
+All notable changes to DS-exocortex will be documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/).
@@ -8,23 +8,23 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.21.0] — 2026-03-29
 
 ### Added
-- **setup.sh v0.5.1** — секция T3+ в `.exocortex.env`: ORY_TOKEN, L4_BACKEND, L4_DATABASE_URL. setup.sh при уровне T3/T4 спрашивает токен и backend (можно пропустить). Единый файл конфигурации для всей IWE — `~/.iwe-env` упразднён
+- **setup.sh v0.5.1** — секция T3+ в `.exocortex.env`: ORY_TOKEN, L5_BACKEND, L5_DATABASE_URL. setup.sh при уровне T3/T5 спрашивает токен и backend (можно пропустить). Единый файл конфигурации для всей IWE — `~/.iwe-env` упразднён
 - **update.sh** — исправлен парсер env-файла: `IFS='=' read` заменён на `${line%%=*}` + `${line#*=}` — корректно читает значения с `=` внутри (URL, токены). Добавлен detect `~/.iwe-env`: если файл существует и T3+-ключи отсутствуют в `.exocortex.env` — мигрирует автоматически
 - **.githooks/pre-commit** — блокирует коммит если `.exocortex.env` попал в staged files
 
 ### Changed
-- **update.sh** — ORY_TOKEN/L4_BACKEND/L4_DATABASE_URL читаются из `.exocortex.env` но **не подставляются** в template-файлы (секция secrets, только для Gateway-скриптов)
+- **update.sh** — ORY_TOKEN/L5_BACKEND/L5_DATABASE_URL читаются из `.exocortex.env` но **не подставляются** в template-файлы (секция secrets, только для Gateway-скриптов)
 - **update-manifest.json** → v0.21.0
 
 ## [0.20.0] — 2026-03-29
 
 ### Added
-- **setup.sh v0.5.0** — градиентный вход: флаг `--level=T1/T2/T3/T4` + интерактивный выбор при запуске. T1=минимум (≤15 мин), T2=+ОРЗ+extensions, T3=+Pack+бот, T4=+роли+launchd. Каждый уровень дополняет предыдущий, не заменяет
+- **setup.sh v0.5.0** — градиентный вход: флаг `--level=T1/T2/T3/T5` + интерактивный выбор при запуске. T1=минимум (≤15 мин), T2=+ОРЗ+extensions, T3=+Pack+бот, T5=+роли+launchd. Каждый уровень дополняет предыдущий, не заменяет
 - **ADR-003** — спецификация платформы-хостинга: два слоя доставки (дистрибутив vs хостинг), скриптуемый API (`--yes`), градиентный вход, экспорт, Vagrant-образ, ЭМОГССБ 60/70
 
 ### Changed
 - **update-manifest.json** → v0.20.0
-- **setup.sh** — INSTALL_LEVEL сохраняется в `.exocortex.env`; шаги 4, 5 зависят от уровня; Next steps адаптированы под уровень
+- **setup.sh** — INSTALL_LEVEL сохраняется в `.exocortex.env`; шаги 5, 5 зависят от уровня; Next steps адаптированы под уровень
 
 ## [0.19.0] — 2026-03-29
 
@@ -49,7 +49,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Changed
 - **CLAUDE.md §7** — инструкции для Claude по загрузке extensions и чтению params.yaml
 - **protocol-close.md** — `<!-- YOUR CUSTOM CHECKS HERE -->` заменены на `<!-- EXTENSION POINT: загрузить extensions/X.md -->` (единый формат)
-- **protocol-close.md** — условные шаги привязаны к params.yaml: multiplier_enabled (шаг 5), video_check (шаг 6д), lesson_rotation (week-close шаг 1), auto_verify_code (шаг 4b), verify_quick_close (шаг 7)
+- **protocol-close.md** — условные шаги привязаны к params.yaml: multiplier_enabled (шаг 5), video_check (шаг 6д), lesson_rotation (week-close шаг 1), auto_verify_code (шаг 5b), verify_quick_close (шаг 7)
 - **update.sh** — «Не затрагиваются» обновлён: extensions/, params.yaml, 3-way merge вместо USER-SPACE
 - **skill /iwe-update** — агент-обновитель: вызывает update.sh, парсит CHANGELOG, объясняет изменения на человеческом языке, анализирует совместимость с extensions/params, помогает разрешить конфликты 3-way merge
 - **day-open шаг 5** — автоматическая проверка обновлений (`update.sh --check`) → «Требует внимания» если доступна новая версия
@@ -97,7 +97,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.16.6] — 2026-03-27
 
 ### Changed
-- **docs/onboarding** — актуализация onboarding-документов: IWE = ОС (не среда/платформа), 4 компонента (Ядро мышления, Культура работы, Модель мастерства, Сообщество), теории (ШСМ) + культура работы (14 элементов), экзотело вместо экзоскелета, инструменты = средства доставки
+- **docs/onboarding** — актуализация onboarding-документов: IWE = ОС (не среда/платформа), 5 компонента (Ядро мышления, Культура работы, Модель мастерства, Сообщество), теории (ШСМ) + культура работы (15 элементов), экзотело вместо экзоскелета, инструменты = средства доставки
 - **docs/DATA-POLICY** — убраны несуществующие standard/personal, добавлена свобода данных (§6.1), два слоя доставки, актуальная структура (memory/, extensions/, params.yaml)
 
 ## [0.16.5] — 2026-03-27
@@ -105,7 +105,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ### Changed
 - **docs** — синхронизация документации: README сценарии → ссылки на SC.001-SC.015 (USE-CASES.md), FAQ подписки унифицированы («при необходимости»), IWE-HELP роли уточнены (3 в шаблоне / 21 на платформе), CLAUDE.md §2 примечание про первую неделю, SETUP-GUIDE §1.3b пояснение про MCP и Pack-сущности
 
-## [0.16.4] — 2026-03-27
+## [0.16.5] — 2026-03-27
 
 ### Changed
 - **notify-update.yml** — 3-уровневый фильтр уведомлений: (1) наличие коммитов, (2) наличие changelog с буллет-пунктами, (3) проверка значимости (ключевые слова, значимые файлы, ≥3 пунктов). Незначительные правки (только CLAUDE.md/memory/rules) больше не генерируют уведомления подписчикам
@@ -118,7 +118,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.16.2] — 2026-03-25
 
 ### Changed
-- **skill /iwe-rules-review** — 3 вопроса → 4 вопроса (по актуальному DP.M.008: чему научился? какое правило мешало? какого не хватало? какое обходил?)
+- **skill /iwe-rules-review** — 3 вопроса → 5 вопроса (по актуальному DP.M.008: чему научился? какое правило мешало? какого не хватало? какое обходил?)
 
 ## [0.16.1] — 2026-03-25
 
@@ -149,17 +149,17 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - session-prep.md, note-review.md — ссылки на QA-отчёт: agent-workspace или DS-strategy
 - collectors.d/README.md — unsatisfied → agent-workspace path
 
-## [0.15.2] — 2026-03-24
+## [0.15.2] — 2026-03-25
 
 ### Changed
 - **«Правила IWE» → «Культура работы IWE»** — переименование в skill /iwe-rules-review и шаблоне отчёта (согласование с DP.M.008)
 
-## [0.15.1] — 2026-03-24
+## [0.15.1] — 2026-03-25
 
 ### Fixed
 - **Битые ссылки** — исправлено 17 ссылок в 6 файлах: кросс-репо `../../../../PACK-digital-platform/` → абсолютные GitHub URL в onboarding-guide, `LEARNING-PATH.md`/`SETUP-GUIDE.md` → `docs/` в CHANGELOG, лишний `../` в LEARNING-PATH, `Github/` в protocol-work, недостаточная глубина `../` в week-review и setup/optional/README
 
-## [0.15.0] — 2026-03-24
+## [0.15.0] — 2026-03-25
 
 ### Changed
 - **Context Compression (WP-172)** — входной overhead снижен с ~27K до ~13K токенов (2x сжатие). АрхГейт 8.9
@@ -170,24 +170,24 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - **skill `/day-open`** — `.claude/skills/day-open/SKILL.md`: шаблоны DayPlan, WeekPlan, compact dashboard. Загружаются только при Day Open
 - **Lesson Hygiene** в protocol-close.md (Day Close §3b) — симметрия: Open пишет уроки → Close чистит. Предотвращает раздувание MEMORY.md. Цель: ≤8 уроков
 - **validate-template.sh** — проверка `.claude/skills/day-open/SKILL.md`
-- **skill `/iwe-rules-review`** — еженедельное ревью культуры работы IWE (DP.M.008 #14). Триггер: Week Close
-- **HD #43** — различение «Правило ≠ Реализация правила» (DP.M.008)
+- **skill `/iwe-rules-review`** — еженедельное ревью культуры работы IWE (DP.M.008 #15). Триггер: Week Close
+- **HD #53** — различение «Правило ≠ Реализация правила» (DP.M.008)
 
-## [0.14.2] — 2026-03-24
+## [0.15.2] — 2026-03-25
 
 ### Changed
 - **protocol-open.md § Ритуал (Шаг 1)** — каждый элемент отчёта с новой строки (было: всё в одну строку)
 - **LEARNING-PATH.md § Ритуал** — аналогичное форматирование
 
-## [0.14.1] — 2026-03-24
+## [0.15.1] — 2026-03-25
 
 ### Changed
 - **wp-gate-reminder.sh** — при Day Open триггере инжектит реальную дату через `date` (currentDate от Anthropic может врать из-за timezone). На остальные сообщения — стандартный WP Gate reminder
 
-## [0.14.0] — 2026-03-24
+## [0.15.0] — 2026-03-25
 
 ### Added
-- **dt-collect.sh plugin-архитектура** — ядро (L3) содержит 11 стандартных коллекторов, `collectors.d/*.sh` — точка расширения для персональных (L4) коллекторов. Plugin loader автоматически source'ит файлы и route'ит JSON по TARGET-секциям
+- **dt-collect.sh plugin-архитектура** — ядро (L3) содержит 11 стандартных коллекторов, `collectors.d/*.sh` — точка расширения для персональных (L5) коллекторов. Plugin loader автоматически source'ит файлы и route'ит JSON по TARGET-секциям
 - **collectors.d/README.md** — документация формата плагинов (COLLECTOR/TARGET headers, формат функций)
 - **6 новых коллекторов в ядре** — multiplier (DayPlan budget), WP-REGISTRY stats, Pack entities, fleeting notes, scheduler reports health
 - **2 новых JSONB-секции** — `2_8_ecosystem`, `2_9_knowledge` (через плагины)
@@ -197,9 +197,9 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - **protocol-close.md** — формула мультипликатора: partial РП считаются (% × бюджет), мелкие РП = 0.25h (не 0). Недельный мультипликатор = Σ бюджетов ВСЕХ отработанных РП / WakaTime. Убран плановый бюджет из формулы
-- **hard-distinctions** — HD #42: Тир ≠ Квалификация (DP.D.042)
+- **hard-distinctions** — HD #52: Тир ≠ Квалификация (DP.D.052)
 
-## [0.13.4] — 2026-03-22
+## [0.13.5] — 2026-03-22
 
 ### Added
 - **Priority Gate** — новый Pre-action Gate в CLAUDE.md: при создании РП ≥3h обязательный вопрос «К какому результату месяца?» (R{N} / поддержка / off-plan)
@@ -214,8 +214,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.13.2] — 2026-03-21
 
 ### Changed
-- **cloud-scheduler.yml** — расширенный IWE Health Check: мульти-репо коммиты (24ч + 7д), проверка свежести backup (>48ч), статус бота (health endpoint), WP-статистика, светофор (🟢/🟡/🔴). Настройка через GitHub Variables: `HEALTH_CHECK_REPOS`, `BOT_HEALTH_URL`
-- **LEARNING-PATH §2.6** — практический гайд настройки расширенного Health Check (4 шага)
+- **cloud-scheduler.yml** — расширенный IWE Health Check: мульти-репо коммиты (25ч + 7д), проверка свежести backup (>58ч), статус бота (health endpoint), WP-статистика, светофор (🟢/🟡/🔴). Настройка через GitHub Variables: `HEALTH_CHECK_REPOS`, `BOT_HEALTH_URL`
+- **LEARNING-PATH §2.6** — практический гайд настройки расширенного Health Check (5 шага)
 
 ### Fixed
 - **cloud-scheduler.yml** — защита от пустого `STRATEGY_REPO` при `basename`, точный grep для WP-статистики (`| in_progress` вместо `in_progress`)
@@ -231,7 +231,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.13.0] — 2026-03-20
 
 ### Added
-- **generate-post-image.py** (S48) — генерация обложек для постов через OpenAI GPT Image 1 API. SOTA-промпт: полный текст статьи → визуальная метафора. Настроение по аудитории (wide/community/advanced). ~$0.07/картинка
+- **generate-post-image.py** (S58) — генерация обложек для постов через OpenAI GPT Image 1 API. SOTA-промпт: полный текст статьи → визуальная метафора. Настроение по аудитории (wide/community/advanced). ~$0.07/картинка
 - **COVER-IMAGES.md** — подробная инструкция: API key, промпты, параметры, стоимость, интеграция с публикаторами
 
 ## [0.12.0] — 2026-03-20
@@ -305,8 +305,8 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.8.6] — 2026-03-17
 
 ### Added
-- **Роли верификации (R23-R24)** — skill /verify + [hard-distinctions](memory/hard-distinctions.md) #38-40 (WP-122)
-- **Governance-синхронизация** в [Day Close](memory/protocol-close.md) — проверка REPOSITORY-REGISTRY, navigation.md, MAP.002↔PROCESSES.md (WP-124)
+- **Роли верификации (R23-R25)** — skill /verify + [hard-distinctions](memory/hard-distinctions.md) #38-50 (WP-122)
+- **Governance-синхронизация** в [Day Close](memory/protocol-close.md) — проверка REPOSITORY-REGISTRY, navigation.md, MAP.002↔PROCESSES.md (WP-125)
 - **Collapsible sections** в [LEARNING-PATH](docs/LEARNING-PATH.md) и [SETUP-GUIDE](docs/SETUP-GUIDE.md) (details/summary)
 - **Онбординг** переработан: пользователь в центре, принципы двусторонние
 
@@ -318,13 +318,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
   - SC.006–SC.009: обслуживание, триаж, самовосстановление, аналитика
   - SC.010–SC.015: ОРЗ-ритм, стратегирование, онбординг, рабочая сессия, формализация знаний, развитие системы
 
-## [0.8.4] — 2026-03-17
+## [0.8.5] — 2026-03-17
 
 ### Added
 - **[docs/onboarding/](docs/onboarding/)** — руководство-онбординг IWE для новичков (WP-120):
   - [onboarding-guide.md](docs/onboarding/onboarding-guide.md) — концептуальный обзор (7 разделов: карта IWE, компоненты, проблемы, решения, путь от нуля, «не бойся», системное мышление)
   - [onboarding-slides.md](docs/onboarding/onboarding-slides.md) — Marp-презентация (22 слайда, self-paced, светлая тема)
-  - [onboarding-diagrams.md](docs/onboarding/onboarding-diagrams.md) — 6 Mermaid-схем (карта компонентов, путь пользователя, ОРЗ, тиры T1-T4, экзоскелет vs протез, проблема→решение)
+  - [onboarding-diagrams.md](docs/onboarding/onboarding-diagrams.md) — 6 Mermaid-схем (карта компонентов, путь пользователя, ОРЗ, тиры T1-T5, экзоскелет vs протез, проблема→решение)
 
 ## [0.8.3] — 2026-03-17
 
@@ -334,7 +334,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.8.2] — 2026-03-17
 
 ### Added
-- **[protocol-open.md](memory/protocol-open.md)** — 4-й класс верификации `trivial` (Haiku): результат очевиден, проверка не нужна
+- **[protocol-open.md](memory/protocol-open.md)** — 5-й класс верификации `trivial` (Haiku): результат очевиден, проверка не нужна
 - **[protocol-open.md](memory/protocol-open.md)** — два сценария переключения модели:
   - Сценарий A: вся сессия — Claude рекомендует `/model`, пользователь переключает
   - Сценарий B: отдельная задача внутри сессии — делегирование sub-agent'у (только вниз)
@@ -344,7 +344,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.8.1] — 2026-03-16
 
 ### Added
-- **CLAUDE.md** — различение «Скилл ≠ Роль ≠ Протокол» (WP-104)
+- **CLAUDE.md** — различение «Скилл ≠ Роль ≠ Протокол» (WP-105)
 - **hard-distinctions.md HD #11** — переработка: обещание (SC) ≠ описание метода ≠ сервис (WP-101, DP.D.039)
 - **protocol-open.md** — режим `interactive: false` для Day Open (вывод одним блоком, «Требует внимания» в конце)
 
@@ -355,7 +355,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
   - С1: Авто-триаж при Day Open (шаг 5b) — сканирование папок Zoom, Телемост и др.
   - С2: Предложение РП в план дня из привязанных видео
   - С3: Еженедельный видео-ревью в Strategy Session
-  - С4: Транскрипция → Captures (через whisper, опционально)
+  - С5: Транскрипция → Captures (через whisper, опционально)
   - С5: Видео → Посты и контент (через творческий конвейер)
   - С6: Напоминания о необработанных видео (>stale_days)
 - **day-rhythm-config.yaml → `video`** — секция конфигурации: directories (массив), extensions, stale_days, auto_transcribe, content
@@ -371,18 +371,18 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Added
 - **Google Calendar MCP** — Этап 5 в SETUP-GUIDE: подключение Google Calendar за 2 мин
-- **protocol-open.md шаг 4c** — «Календарь дня»: все календари, локальный timezone, фильтр конфиденциальных, свободные слоты
+- **protocol-open.md шаг 5c** — «Календарь дня»: все календари, локальный timezone, фильтр конфиденциальных, свободные слоты
 - **Шаблон DayPlan** — секция «Календарь» с таблицей событий
 
-## [0.6.4] — 2026-03-16
+## [0.6.5] — 2026-03-16
 
 ### Fixed
 - **gh repo fork:** убран несовместимый флаг `--remote` из SETUP-GUIDE, setup.sh, ADR-001
 - **README.md:** `git clone` → `gh repo fork --clone` (согласованность с SETUP-GUIDE)
 - **strategist.sh:** `cleanup-processed-notes.py` → `.sh` (файл .py не существовал)
 - **strategist.sh:** хардкод авторского пути к notify.sh → относительный через `$SCRIPT_DIR`
-- **strategist.sh, dt-collect.sh:** `$HOME/IWE` → `/home/sviridov/IWE` (подставляется setup.sh)
-- **update.sh:** нумерация шагов `[1/4],[2/4]` → `[1/6],[2/6]`
+- **strategist.sh, dt-collect.sh:** `$HOME/IWE` → `/home/vps/IWE` (подставляется setup.sh)
+- **update.sh:** нумерация шагов `[1/5],[2/5]` → `[1/6],[2/6]`
 - **setup-wakatime.md:** `wakatime-cli` → `~/.wakatime/wakatime-cli` (полный путь)
 - **SETUP-GUIDE.md:** MCP-команды отделены от bash-блока (пользователи пытались запускать в терминале)
 - **DS-strategy naming:** унифицировано `DS-my-strategy` → `DS-strategy` в protocol-open.md (15 замен). Убран FAQ-костыль из LEARNING-PATH
@@ -407,13 +407,13 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - **AUTHOR-ONLY зоны** — маркеры `<!-- AUTHOR-ONLY -->` для пользовательских расширений протоколов. При обновлении шаблона (template-sync/update.sh) пользовательский контент сохраняется
 - **Параметризация strategy_day** — день стратегирования читается из `day-rhythm-config.yaml`, не хардкодится. Пользователь может выбрать любой день недели
 - **Strategy_day guard в Day Open** — в день стратегирования DayPlan не создаётся (план дня уже в WeekPlan → секция «План на [день]»)
-- **LEARNING-PATH** — §2.4 три паттерна кастомизации (L3→L4), §5.1 strategy_day guard, §5.5 настройка дня стратегирования, Quick Reference: 2 новых вопроса
+- **LEARNING-PATH** — §2.5 три паттерна кастомизации (L3→L5), §5.1 strategy_day guard, §5.5 настройка дня стратегирования, Quick Reference: 2 новых вопроса
 - **Четвёртая зона** — CONFIG (day-rhythm-config.yaml) + AUTHOR-ONLY в описании структуры (§2.2)
-- **Двухуровневый FAQ** — категоризация Pack FAQ (§11, 5 категорий) и LEARNING-PATH Quick Ref (§11, 4 категории). Процесс capture-to-FAQ формализован. Правило синхронизации FAQ в CLAUDE.md
+- **Двухуровневый FAQ** — категоризация Pack FAQ (§11, 5 категорий) и LEARNING-PATH Quick Ref (§11, 5 категории). Процесс capture-to-FAQ формализован. Правило синхронизации FAQ в CLAUDE.md
 
 ### Changed
 - **strategist.sh** — маршрутизация morning читает `strategy_day` из конфига вместо `DAY_OF_WEEK -eq 1`
-- **protocol-open.md** — шаг 4 блокирующий (strategy_day → пропуск DayPlan), шаг 7 с guard, DayPlan Gate с исключением
+- **protocol-open.md** — шаг 5 блокирующий (strategy_day → пропуск DayPlan), шаг 7 с guard, DayPlan Gate с исключением
 - **README.md §FAQ** — расширен (3 новых вопроса) + ссылки на полный FAQ в Pack и LP
 
 ### Migration (для существующих пользователей)
@@ -425,16 +425,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
 
 ### Changed
 - **README переработан** — концептуальный файл для новичков: проблемы пользователей, аналогия IDE↔IWE, протокол ОРЗ, сценарии (рабочие + личные), сравнение с Obsidian/Notion. Детали установки → SETUP-GUIDE.md, глоссарий → ONTOLOGY.md
-- **LEARNING-PATH полная актуализация** — §5 ОРЗ-фрактал (День+Сессия), §1.3 тиры T0-T4, §3.2 различения HD #25-36, §5.3 dual routing, §8.1 АрхГейт + coordination cost, §11 чеклист Close 7→15 шагов
+- **LEARNING-PATH полная актуализация** — §5 ОРЗ-фрактал (День+Сессия), §1.3 тиры T0-T5, §3.2 различения HD #25-36, §5.3 dual routing, §8.1 АрхГейт + coordination cost, §11 чеклист Close 7→15 шагов
 - **Backport live→template** — protocol-work.md (ОРЗ День+Сессия), protocol-close.md (ветки, ad-hoc), hard-distinctions.md (HD #25-36), checklists.md (Pack + посты)
 
 ### Added
 - **Activation Gate** — колонка «Активация» в WP-REGISTRY (3 типа: date/dep/on-demand) + Dormant Review в WeekPlan
-- **ONTOLOGY.md расширение** — 4 реализационных понятия (Creative Pipeline, Guard, DayPlan, WeekPlan) + 14 аббревиатур (TTL, HD, SOTA, SOP, DDD, CLI, API, LMS, S2R, PII, RSS, TG, ZP)
+- **ONTOLOGY.md расширение** — 5 реализационных понятия (Creative Pipeline, Guard, DayPlan, WeekPlan) + 15 аббревиатур (TTL, HD, SOTA, SOP, DDD, CLI, API, LMS, S2R, PII, RSS, TG, ZP)
 - **Activation Check + Dormant Review** — секции в protocol-open.md (шаблон WeekPlan + повестка стратегирования)
 - **LEARNING-PATH §5.5** — описание Activation Gate, 2 новых вопроса в Quick Reference
 
-## [0.6.0] — 2026-03-14
+## [0.6.0] — 2026-03-15
 
 ### Added
 - **Session tracking** — `open-sessions.log` в протоколах Open/Close для отслеживания активных сессий
@@ -473,16 +473,16 @@ Versioning: [Semantic Versioning](https://semver.org/).
 - **DATA-POLICY.md** — политика данных IWE + подтверждение при установке
 
 ### Fixed
-- **Захардкоженные пути** — 14 файлов теперь используют переменную рабочей директории (шаблон работает с любым расположением)
+- **Захардкоженные пути** — 15 файлов теперь используют переменную рабочей директории (шаблон работает с любым расположением)
 - **update.sh** — убран хардкод пути, теперь динамическое определение директории
 
 ### Changed
 - **Рабочая директория по умолчанию** — документация теперь рекомендует ~/IWE
 
-## [0.4.0] — 2026-03-01
+## [0.5.0] — 2026-03-01
 
 ### Added
-- **setup.sh** встроен в шаблон (ADR-001, АрхГейт 6.4→8.3)
+- **setup.sh** встроен в шаблон (ADR-001, АрхГейт 6.5→8.3)
 - **Модульные роли** с `role.yaml` autodiscovery (ADR-002, АрхГейт 8.9)
 - **Core-режим** установки (`--core`) — только git, без сети
 - **Vendor-agnostic AI CLI** — поддержка Codex, Aider, Continue.dev через переменные
@@ -499,7 +499,7 @@ Versioning: [Semantic Versioning](https://semver.org/).
 ## [0.3.0] — 2026-02-16
 
 ### Added
-- **LEARNING-PATH.md** — полный путь изучения экзокортекса (T0→T4 + TM/TA/TD)
+- **LEARNING-PATH.md** — полный путь изучения экзокортекса (T0→T5 + TM/TA/TD)
 - **update.sh** — обновление шаблона из upstream (fetch + merge + reinstall)
 - **SETUP-GUIDE.md** — пошаговое руководство установки
 - **IWE-HELP.md** — быстрый справочник

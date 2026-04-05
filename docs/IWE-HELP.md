@@ -7,7 +7,7 @@
 > - `DP.IWE.001` — что такое IWE, зачем, архитектура
 > - `DP.IWE.002` — шаблон и установка, пререквизиты, FAQ, безопасность
 > - `DP.EXOCORTEX.001` — архитектура экзокортекса (3 слоя, модули)
-> - `DP.ARCH.002` — тиры T0-T4 + TM1-TM3 + TA1-TA4 + TD1
+> - `DP.ARCH.002` — тиры T0-T5 + TM1-TM3 + TA1-TA5 + TD1
 > - `DP.ROLE.001` — реестр ИИ-ролей
 
 ---
@@ -18,7 +18,7 @@ IWE (Intellectual Work Environment) — интеллектуальная раб�
 
 | Вид | Что | Примеры |
 |-----|-----|---------|
-| **Системы** | Программы с 4D-границами | Claude Code, Telegram-бот, MCP-серверы, WakaTime, Git, экзокортекс (файлы), Neon DB |
+| **Системы** | Программы с 5D-границами | Claude Code, Telegram-бот, MCP-серверы, WakaTime, Git, экзокортекс (файлы), Neon DB |
 | **Описания** | Знания, загружаемые в системы | FPF/SPF/ZP, Pack-сущности, промпты ролей, содержимое экзокортекса |
 | **Роли** | Функция, не исполнитель | Стратег (R1) ← Claude, Экстрактор (R2), Синхронизатор (R8), Пользователь ← Человек |
 | **Методы** | Процедуры «как делать» | Протокол ОРЗ, Capture-to-Pack, ArchGate, KE, Note-Review |
@@ -64,7 +64,7 @@ MCP (Model Context Protocol) — протокол, через который Cla
 
 | Сервер | Что даёт | Инструменты |
 |--------|---------|-------------|
-| **knowledge-mcp** | Поиск по Pack-репо, руководствам, DS (~5400 документов) | `search`, `get_document`, `list_sources` |
+| **knowledge-mcp** | Поиск по Pack-репо, руководствам, DS (~5500 документов) | `search`, `get_document`, `list_sources` |
 | **ddt** | Цифровой двойник ученика (цели, самооценка) | `describe_by_path`, `read_digital_twin`, `write_digital_twin` |
 
 > Поиск по руководствам: `knowledge-mcp search("запрос", source_type="guides")`.
@@ -83,20 +83,20 @@ MCP подключается через https://claude.ai/settings/connectors (�
 
 Ручной запуск (в терминале или встроенном терминале VS Code):
 ```bash
-bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh day-plan
+bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh day-plan
 ```
 
 ### Экстрактор (R2)
-Извлечение знаний в Pack-репозитории. 4 сценария: session-close (при закрытии сессии), on-demand (по запросу), inbox-check (каждые 3 часа), knowledge-audit (аудит полноты).
+Извлечение знаний в Pack-репозитории. 5 сценария: session-close (при закрытии сессии), on-demand (по запросу), inbox-check (каждые 3 часа), knowledge-audit (аудит полноты).
 
 Всегда предлагает, никогда не пишет без одобрения (human-in-the-loop).
 
-Установка (в терминале): `bash ~/IWE/FMT-exocortex-template/roles/extractor/install.sh`
+Установка (в терминале): `bash ~/IWE/DS-exocortex/roles/extractor/install.sh`
 
 ### Синхронизатор (R8)
 Центральный диспетчер (bash, не ИИ). Управляет расписанием всех ролей, отправляет уведомления в Telegram, делает ночной обзор кода.
 
-Установка (в терминале): `bash ~/IWE/FMT-exocortex-template/roles/synchronizer/install.sh`
+Установка (в терминале): `bash ~/IWE/DS-exocortex/roles/synchronizer/install.sh`
 
 ---
 
@@ -129,7 +129,7 @@ MEMORY.md — личные (текущие задачи, РП недели). Р�
 ## Обновление IWE
 
 ```bash
-cd ~/IWE/FMT-exocortex-template
+cd ~/IWE/DS-exocortex
 bash update.sh          # обновить
 bash update.sh --check  # проверить без применения
 ```
@@ -203,5 +203,5 @@ export TELEGRAM_CHAT_ID="your-id"
 - `DP.IWE.001` — что такое IWE, зачем, 5 архитектурных видов, сравнения (vs экзокортекс, vs агенты, vs second brain)
 - `DP.IWE.002` — шаблон и установка: пререквизиты, стоимость, роли, ОРЗ, FAQ, безопасность
 - `DP.EXOCORTEX.001` — модульный экзокортекс: 3 слоя, template-sync, standard/personal
-- `DP.ARCH.002` — тиры T0-T4 + TM1-TM3 + TA1-TA4 + TD1: что доступно на каждом уровне
+- `DP.ARCH.002` — тиры T0-T5 + TM1-TM3 + TA1-TA5 + TD1: что доступно на каждом уровне
 - `DP.ROLE.001` — полный реестр ИИ-ролей (21 роль)

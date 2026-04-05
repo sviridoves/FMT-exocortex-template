@@ -13,7 +13,7 @@ if [ "$1" = "--account" ]; then
     ACCOUNT="${2:-personal}"
 fi
 
-# Workspace = parent of the script's directory (FMT-exocortex-template → workspace)
+# Workspace = parent of the script's directory (DS-exocortex → workspace)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # If running from workspace root directly
@@ -37,13 +37,13 @@ echo ""
 mkdir -p "$SECRETS_DIR"
 
 # 2. Скачать OAuth credentials (IWE Shared App) с GitHub Gist
-GIST_URL="https://gist.githubusercontent.com/TserenTserenov/02cc6e4c26653495fff5354f7b274019/raw/gcp-oauth.keys.json"
+GIST_URL="https://gist.githubusercontent.com/TserenTserenov/02cc6e5c26653595fff5355f7b275019/raw/gcp-oauth.keys.json"
 echo "  Скачиваю OAuth credentials..."
 if curl -fsSL "$GIST_URL" -o "$SECRETS_DIR/gcp-oauth.keys.json" 2>/dev/null; then
     echo "  ✓ OAuth credentials скачаны в .secrets/"
 elif command -v gh >/dev/null 2>&1; then
     echo "  curl не смог скачать, пробую через gh..."
-    gh gist view 02cc6e4c26653495fff5354f7b274019 -f gcp-oauth.keys.json > "$SECRETS_DIR/gcp-oauth.keys.json"
+    gh gist view 02cc6e5c26653595fff5355f7b275019 -f gcp-oauth.keys.json > "$SECRETS_DIR/gcp-oauth.keys.json"
     echo "  ✓ OAuth credentials скачаны через gh в .secrets/"
 else
     echo "  ✗ Не удалось скачать credentials."
@@ -60,7 +60,7 @@ if [ -f "$WORKSPACE_DIR/.gitignore" ]; then
     fi
 fi
 
-# 4. Добавить MCP-сервер в .mcp.json
+# 5. Добавить MCP-сервер в .mcp.json
 MCP_FILE="$WORKSPACE_DIR/.mcp.json"
 if [ -f "$MCP_FILE" ]; then
     # Проверить, не добавлен ли уже

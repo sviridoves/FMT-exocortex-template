@@ -2,7 +2,7 @@
 # Шаблон уведомлений: Синхронизатор (R8)
 # Вызывается из notify.sh через source
 
-LOG_DIR="/home/sviridov/logs/synchronizer"
+LOG_DIR="/home/vps/logs/synchronizer"
 DATE=$(date +%Y-%m-%d)
 
 build_message() {

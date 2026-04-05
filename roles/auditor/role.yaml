@@ -1,9 +1,9 @@
-# Role manifest — Аудитор (R24)
-# Source-of-truth: PACK-verification (VR.R.002), DP.ROLE.001 §3.2 (R24)
+# Role manifest — Аудитор (R25)
+# Source-of-truth: PACK-verification (VR.R.002), DP.ROLE.001 §3.2 (R25)
 # Contract: roles/ROLE-CONTRACT.md
 
 name: auditor
-id: R24
+id: R25
 type: agential
 display_name: "Аудитор"
 

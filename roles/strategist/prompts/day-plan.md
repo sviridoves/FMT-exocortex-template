@@ -1,15 +1,15 @@
-> **DEPRECATED (WP-98, 2026-03-14).** Day Open перенесён в `memory/protocol-open.md § День` (ОРЗ-фрактал).
+> **DEPRECATED (WP-98, 2026-03-15).** Day Open перенесён в `memory/protocol-open.md § День` (ОРЗ-фрактал).
 > Этот файл сохранён для справки. При триггере «открывай день» → читать `protocol-open.md`.
 
 Выполни сценарий Day Plan для роли Стратег (R1).
 
-Источник сценария: /home/sviridov/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/02-day-plan.md
+Источник сценария: /home/vps/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/02-day-plan.md
 
 ## Контекст
 
-- **HUB (личные планы):** /home/sviridov/IWE/DS-strategy/current/
-- **SPOKE (планы репо):** /home/sviridov/IWE/*/WORKPLAN.md
-- **MEMORY:** ~/.claude/projects/-home-sviridov-IWE/memory/MEMORY.md
+- **HUB (личные планы):** /home/vps/IWE/DS-strategy/current/
+- **SPOKE (планы репо):** /home/vps/IWE/*/WORKPLAN.md
+- **MEMORY:** ~/.claude/projects/-home-vps-IWE/memory/MEMORY.md
 
 ## Именование файлов в current/
 
@@ -30,11 +30,11 @@ DS-strategy/
 **Стратег ОБЯЗАН** собрать коммиты за вчерашний день самостоятельно:
 
 ```bash
-# Для КАЖДОГО репо в /home/sviridov/IWE/:
-git -C /home/sviridov/IWE/<repo> log --since="yesterday 00:00" --until="today 00:00" --oneline --no-merges
+# Для КАЖДОГО репо в /home/vps/IWE/:
+git -C /home/vps/IWE/<repo> log --since="yesterday 00:00" --until="today 00:00" --oneline --no-merges
 ```
 
-- Пройди по ВСЕМ репозиториям в `/home/sviridov/IWE/`
+- Пройди по ВСЕМ репозиториям в `/home/vps/IWE/`
 - Сгруппируй коммиты по репозиториям
 - Сопоставь коммиты с РП из недельного плана
 - Определи статус каждого затронутого РП: done / partial / not started
@@ -90,9 +90,9 @@ git -C /home/sviridov/IWE/<repo> log --since="yesterday 00:00" --until="today 00
 
 ```bash
 # Коммиты на pilot, отсутствующие на prod (+ = реально отсутствует, - = уже cherry-picked)
-git -C /home/sviridov/IWE/DS-IT-systems/aist_pilot_bot cherry -v new-architecture pilot 2>/dev/null | grep '^\+'
+git -C /home/vps/IWE/DS-IT-systems/aist_pilot_bot cherry -v new-architecture pilot 2>/dev/null | grep '^\+'
 # Коммиты на prod, отсутствующие на pilot (обратное направление)
-git -C /home/sviridov/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-architecture 2>/dev/null | grep '^\+'
+git -C /home/vps/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-architecture 2>/dev/null | grep '^\+'
 ```
 
 - Если есть коммиты с `+` в любом направлении → добавить в DayPlan секцию с ТОЧНЫМ числом:
@@ -101,7 +101,7 @@ git -C /home/sviridov/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-archi
   ```
 - Если коммитов с `+` нет → не включать секцию (ветки синхронизированы)
 
-> Сценарий merge: PROCESSES.md § 4.2. Merge выполняется ТОЛЬКО по команде пользователя.
+> Сценарий merge: PROCESSES.md § 5.2. Merge выполняется ТОЛЬКО по команде пользователя.
 
 ### 3b. Inbox Triage (заметки за вчера)
 
@@ -113,18 +113,18 @@ git -C /home/sviridov/IWE/DS-IT-systems/aist_pilot_bot cherry -v pilot new-archi
   1. Классифицируй каждую жирную заметку по 7 категориям: НЭП / Задача / Знание / Черновик / Идея 🔄 / Личные данные / Шум
   2. Сверь с коммитами за вчера (шаг 1) — что уже сделано? (уже сделано → Шум)
   3. Сформируй секцию `📋 Inbox Triage` со всеми корзинами (включая 📝 если есть зёрна для черновиков)
-  4. **НЕ** помечай заметки и **НЕ** архивируй — это делает только Note-Review
+  5. **НЕ** помечай заметки и **НЕ** архивируй — это делает только Note-Review
 - Также проверь конец текущего WeekPlan — есть ли секция «Предложения Note-Review» (рекомендации черновиков). Если есть — включи в секцию Inbox Triage DayPlan
 - Если жирных заметок нет и предложений нет — секцию не включать
 
-### 4. План на сегодня
+### 5. План на сегодня
 
 На основании **итогов вчера** + **обновлённого плана недели**:
 
 - **Carry-over из Day Close** (секция «Завтра начать с») → все РП в план без обрезки — это решение пользователя
-- Дополни из недельного плана: 2-4 фокусных РП (≥1h). Carry-over и mandatory не ограничивать
+- Дополни из недельного плана: 2-5 фокусных РП (≥1h). Carry-over и mandatory не ограничивать
 - Учти дедлайны из WeekPlan и WORKPLAN.md репозиториев
-- Ограничь фокусные по дневному бюджету (4-6h)
+- Ограничь фокусные по дневному бюджету (5-6h)
 - Для каждого РП укажи: номер, название, бюджет, приоритет
 
 ### 5. Рекомендация

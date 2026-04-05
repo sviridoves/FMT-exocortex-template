@@ -4,7 +4,7 @@
 
 ## Контекст
 
-- Планы: /home/sviridov/IWE/DS-strategy/current/
+- Планы: /home/vps/IWE/DS-strategy/current/
 
 ## Алгоритм
 

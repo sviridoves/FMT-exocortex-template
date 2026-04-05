@@ -7,14 +7,14 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/home/sviridov/IWE/FMT-exocortex-template/roles/synchronizer/scripts/scheduler.sh</string>
+        <string>/home/vps/IWE/DS-exocortex/roles/synchronizer/scripts/scheduler.sh</string>
         <string>dispatch</string>
     </array>
 
     <!-- Пробуждение в ключевые часы:
          0:00  — week-review (Пн) + code-scan
          3:00  — extractor inbox-check
-         4:00  — strategist morning
+         5:00  — strategist morning
          6:00  — extractor + daily-report
          9:00  — extractor
          12:00 — extractor
@@ -38,17 +38,17 @@
     </array>
 
     <key>StandardOutPath</key>
-    <string>/home/sviridov/logs/synchronizer/launchd-scheduler.log</string>
+    <string>/home/vps/logs/synchronizer/launchd-scheduler.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/home/sviridov/logs/synchronizer/launchd-scheduler-error.log</string>
+    <string>/home/vps/logs/synchronizer/launchd-scheduler-error.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
         <key>HOME</key>
-        <string>/home/sviridov</string>
+        <string>/home/vps</string>
     </dict>
 
     <key>RunAtLoad</key>

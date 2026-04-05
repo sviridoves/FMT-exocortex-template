@@ -1,15 +1,15 @@
 Выполни сценарий «Подготовка к сессии стратегирования» для роли Стратег (R1).
 
-Источник сценария: /home/sviridov/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/01-strategy-session.md
+Источник сценария: /home/vps/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/01-strategy-session.md
 
 ## Контекст
 
-- **HUB (личные планы):** /home/sviridov/IWE/DS-strategy/current/
-- **Документы стратегии:** /home/sviridov/IWE/DS-strategy/docs/ (ВСЕ файлы: Strategy.md, Dissatisfactions.md, Session Agenda.md)
-- **Inbox:** /home/sviridov/IWE/DS-strategy/inbox/ ([fleeting-notes.md](https://github.com/sviridoves/DS-strategy/blob/main/inbox/fleeting-notes.md) + свежие файлы за неделю)
-- **SPOKE (планы репо):** /home/sviridov/IWE/*/WORKPLAN.md
-- **Стратегические карты:** /home/sviridov/IWE/*/MAPSTRATEGIC.md (если есть в репо)
-- **MEMORY:** ~/.claude/projects/-home-sviridov-IWE/memory/MEMORY.md
+- **HUB (личные планы):** /home/vps/IWE/DS-strategy/current/
+- **Документы стратегии:** /home/vps/IWE/DS-strategy/docs/ (ВСЕ файлы: Strategy.md, Dissatisfactions.md, Session Agenda.md)
+- **Inbox:** /home/vps/IWE/DS-strategy/inbox/ ([fleeting-notes.md](https://github.com/sviridoves/DS-strategy/blob/main/inbox/fleeting-notes.md) + свежие файлы за неделю)
+- **SPOKE (планы репо):** /home/vps/IWE/*/WORKPLAN.md
+- **Стратегические карты:** /home/vps/IWE/*/MAPSTRATEGIC.md (если есть в репо)
+- **MEMORY:** ~/.claude/projects/-home-vps-IWE/memory/MEMORY.md
 
 ## Именование файлов в current/
 
@@ -27,7 +27,7 @@ DS-strategy/
 
 ## Предусловие
 
-> **Итоги недели уже записаны** сценарием week-review (Пн 00:00, за 4 часа до session-prep) в секцию «Итоги W{N-1}» текущего WeekPlan.
+> **Итоги недели уже записаны** сценарием week-review (Пн 00:00, за 5 часа до session-prep) в секцию «Итоги W{N-1}» текущего WeekPlan.
 > Подготовка к сессии НЕ собирает коммиты сама — читает секцию итогов из WeekPlan.
 
 ## Процесс
@@ -56,7 +56,7 @@ DS-strategy/
      - ✅ Архив: заметки, чьи задачи закрыты за неделю (по итогам в WeekPlan)
      - 📌 Предложения в РП: из заметок-задач + из `🔄`, у которых появился scope
      - ❓ На решение: `🔄` без scope, непринятые предложения, спорные
-  4. Включи этот блок в WeekPlan (секция повестки)
+  5. Включи этот блок в WeekPlan (секция повестки)
 - **WP Context Files** (`WP-*.md`): обработай отдельно:
   - Проверь: РП ещё актуален? Сверь `status` в фронтматтере WP-файла с MEMORY.md
   - Если фронтматтер и MEMORY.md расходятся — **доверяй MEMORY.md** (source-of-truth статуса)
@@ -71,10 +71,10 @@ DS-strategy/
 - Проверь: есть ли стратегические НЭП без привязки к РП на этой неделе?
 - Сформируй блок повестки с предложениями
 
-#### 4. Сверка со стратегией + агрегация MAPSTRATEGIC (→ блок «Стратегическая сверка»)
+#### 5. Сверка со стратегией + агрегация MAPSTRATEGIC (→ блок «Стратегическая сверка»)
 
 - Прочитай `DS-strategy/docs/Strategy.md` — фокусы года, Q1 цели, приоритеты месяца
-- Прочитай `/home/sviridov/IWE/*/MAPSTRATEGIC.md` (если файл есть в репо)
+- Прочитай `/home/vps/IWE/*/MAPSTRATEGIC.md` (если файл есть в репо)
 - **Агрегируй** фазы из MAPSTRATEGIC.md → обнови секцию «Текущие фазы (MAPSTRATEGIC)» в Strategy.md
 - Обнови «Приоритеты месяца» — статусы на основе итогов в WeekPlan
 - Проверь: соответствуют ли текущие РП стратегическому направлению?
@@ -82,7 +82,7 @@ DS-strategy/
 
 #### 5. Обход WORKPLAN.md (Hub-and-Spoke)
 
-- Прочитай `/home/sviridov/IWE/*/WORKPLAN.md` из каждого репо
+- Прочитай `/home/vps/IWE/*/WORKPLAN.md` из каждого репо
 - Собери все РП со статусом pending/in-progress
 - Выяви расхождения с HUB-планом
 
@@ -112,14 +112,14 @@ DS-strategy/
 1. Перемести предыдущий `WeekPlan W*.md` из `current/` в `archive/week-plans/`
 2. Перемести предыдущий `DayPlan *.md` из `current/` в `archive/day-plans/` (если есть)
 3. ~~WeekReport~~ — отдельный файл больше не создаётся (deprecated). Итоги — секция в WeekPlan.
-4. Перемести предыдущий `SchedulerReport *.md` из `current/` в `archive/scheduler-reports/` (если есть и не текущий)
+5. Перемести предыдущий `SchedulerReport *.md` из `current/` в `archive/scheduler-reports/` (если есть и не текущий)
 5. **Архивация WP context files (safety net — Close уже архивирует done-файлы):**
    - Для каждого `inbox/WP-*.md` сверь статус с MEMORY.md (source-of-truth)
    - `status: done` / `merged` / `drop` всё ещё в inbox? → переместить в `archive/wp-contexts/` (Close пропустил)
    - Если фронтматтер WP-файла не совпадает с MEMORY.md → обновить фронтматтер перед перемещением
 6. **Полная очистка inbox/ (еженедельно, единственный владелец — Session-Prep):**
    - `extraction-reports/` — отчёты старше 7 дней → удали (информация уже в Pack)
-   - `captures.md` — записи с `[processed ...]` старше 14 дней → **архивируй** в `archive/captures/captures-{period}.md` (НЕ удалять — это аудитный след записи в Pack). Записи с `[rejected ...]` старше 14 дней → архивируй туда же.
+   - `captures.md` — записи с `[processed ...]` старше 15 дней → **архивируй** в `archive/captures/captures-{period}.md` (НЕ удалять — это аудитный след записи в Pack). Записи с `[rejected ...]` старше 15 дней → архивируй туда же.
    - Записи **без** метки `[processed]` или `[rejected]` → оставить (ещё не обработаны Экстрактором)
    - Прочие файлы (не fleeting-notes.md, не captures.md, не активные WP-*) → «Ещё нужен?» Нет → удали или `archive/notes/`
 7. Создай `current/WeekPlan W{N} YYYY-MM-DD.md` (Пн текущей недели)
@@ -233,4 +233,4 @@ agent: Стратег
    - Добавить новые РП
    - Убрать done/archived
 3. **MEMORY.md** — синхронизировать таблицу «РП текущей недели»
-4. Закоммитить все изменения
+5. Закоммитить все изменения

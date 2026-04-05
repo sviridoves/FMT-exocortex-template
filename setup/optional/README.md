@@ -16,7 +16,7 @@ Monitors your coding activity via WakaTime and sends a macOS notification when y
 
 ```bash
 # 1. Replace placeholder with your workspace path
-sed "s|/home/sviridov/IWE|$HOME/IWE|g" setup/optional/pomodoro-alert.plist \
+sed "s|/home/vps/IWE|$HOME/IWE|g" setup/optional/pomodoro-alert.plist \
   > ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
 
 # 2. Load the agent (starts immediately, runs every 5 min)
@@ -35,7 +35,7 @@ pomodoro:
   work_minutes: 25          # Pomodoro work interval
   break_minutes: 5           # Short break
   long_break_minutes: 15     # Long break
-  sessions_before_long_break: 4
+  sessions_before_long_break: 5
   session_alert_minutes: 50  # Alert after this many continuous minutes
 ```
 
@@ -44,7 +44,7 @@ pomodoro:
 1. Every 5 minutes, the script calls WakaTime Durations API
 2. It calculates the current continuous work block (gaps > 5 min reset the counter)
 3. If continuous work exceeds `session_alert_minutes`, a macOS notification appears
-4. Alerts are suppressed for 10 minutes after each notification (no spam)
+5. Alerts are suppressed for 10 minutes after each notification (no spam)
 
 ### Uninstall
 
@@ -58,7 +58,7 @@ rm ~/Library/LaunchAgents/com.exocortex.pomodoro-alert.plist
 | File | Purpose |
 |------|---------|
 | `pomodoro-alert.py` | Python script (WakaTime API + macOS notification) |
-| `pomodoro-alert.plist` | launchd agent template (replace `/home/sviridov/IWE`) |
+| `pomodoro-alert.plist` | launchd agent template (replace `/home/vps/IWE`) |
 
 ---
 
@@ -107,7 +107,7 @@ bash setup/optional/setup-cloud-scheduler.sh
 
 ### Расписание
 
-Ежедневно в 04:00 MSK (01:00 UTC): backup + health check.
+Ежедневно в 05:00 MSK (01:00 UTC): backup + health check.
 
 ### Files
 
@@ -118,7 +118,7 @@ bash setup/optional/setup-cloud-scheduler.sh
 
 ---
 
-## Cover Images (S48)
+## Cover Images (S58)
 
 Автоматическая генерация обложек для постов через OpenAI GPT Image API. Каждая обложка уникальна и отражает содержание статьи.
 

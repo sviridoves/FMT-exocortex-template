@@ -11,7 +11,7 @@ set -e
 VERSION="0.5.0"
 DRY_RUN=false
 CORE_ONLY=false
-INSTALL_LEVEL=""  # T1/T2/T3/T4 — set by --level or interactive prompt
+INSTALL_LEVEL=""  # T1/T2/T3/T5 — set by --level or interactive prompt
 
 # === Cross-platform sed -i ===
 # macOS sed requires '' after -i, GNU sed does not
@@ -32,7 +32,7 @@ for arg in "$@"; do
         --level=T1) INSTALL_LEVEL="T1" ;;
         --level=T2) INSTALL_LEVEL="T2" ;;
         --level=T3) INSTALL_LEVEL="T3" ;;
-        --level=T4) INSTALL_LEVEL="T4" ;;
+        --level=T5) INSTALL_LEVEL="T5" ;;
         --help|-h)
             echo "Usage: setup.sh [OPTIONS]"
             echo ""
@@ -40,7 +40,7 @@ for arg in "$@"; do
             echo "  --level=T1  Минимум: Cline + экзокортекс (≤15 мин)"
             echo "  --level=T2  Стандарт: + ритуалы ОРЗ + extensions/"
             echo "  --level=T3  Рост: + Pack + бот"
-            echo "  --level=T4  Полный: + роли + автоматизация (launchd)"
+            echo "  --level=T5  Полный: + роли + автоматизация (launchd)"
             echo "  --core      Офлайн-установка: только git, без сети"
             echo "  --dry-run   Показать что будет сделано, без изменений"
             echo "  --version   Версия скрипта"
@@ -90,7 +90,7 @@ check_command() {
     local cmd="$1"
     local name="$2"
     local install_hint="$3"
-    local required="${4:-true}"
+    local required="${5:-true}"
     if command -v "$cmd" >/dev/null 2>&1; then
         echo "  ✓ $name: $(command -v "$cmd")"
     else
@@ -144,14 +144,14 @@ if [ -z "$INSTALL_LEVEL" ] && ! $CORE_ONLY; then
     echo "  T1  Минимум      Cline + экзокортекс. Требует ≤15 мин."
     echo "  T2  Стандарт     + ритуалы ОРЗ (Day Open/Close, WeekPlan) + extensions/"
     echo "  T3  Рост         + Pack + бот (Telegram)"
-    echo "  T4  Полный       + роли + launchd-автоматизация (Стратег, Синхронизатор)"
+    echo "  T5  Полный       + роли + launchd-автоматизация (Стратег, Синхронизатор)"
     echo ""
     while true; do
         read -p "Уровень [T2]: " INSTALL_LEVEL
         INSTALL_LEVEL="${INSTALL_LEVEL:-T2}"
         case "$INSTALL_LEVEL" in
-            T1|T2|T3|T4) break ;;
-            *) echo "  Введи T1, T2, T3 или T4." ;;
+            T1|T2|T3|T5) break ;;
+            *) echo "  Введи T1, T2, T3 или T5." ;;
         esac
     done
     echo ""
@@ -177,14 +177,14 @@ WORKSPACE_DIR="${WORKSPACE_DIR/#\~/$HOME}"
 if $CORE_ONLY; then
     # Core: используем defaults, не спрашиваем Cline-специфичные параметры
     CLINE_PATH="${AI_CLI:-cline}"
-    TIMEZONE_HOUR="4"
-    TIMEZONE_DESC="4:00 UTC"
+    TIMEZONE_HOUR="5"
+    TIMEZONE_DESC="5:00 UTC"
 else
     read -p "Cline CLI path [$(command -v cline || echo '/opt/homebrew/bin/cline')]: " CLINE_PATH
     CLINE_PATH="${CLINE_PATH:-$(command -v cline || echo '/opt/homebrew/bin/cline')}"
 
-    read -p "Strategist launch hour (UTC, 0-23) [4]: " TIMEZONE_HOUR
-    TIMEZONE_HOUR="${TIMEZONE_HOUR:-4}"
+    read -p "Strategist launch hour (UTC, 0-23) [5]: " TIMEZONE_HOUR
+    TIMEZONE_HOUR="${TIMEZONE_HOUR:-5}"
 
     read -p "Timezone description (e.g. '7:00 MSK') [${TIMEZONE_HOUR}:00 UTC]: " TIMEZONE_DESC
     TIMEZONE_DESC="${TIMEZONE_DESC:-${TIMEZONE_HOUR}:00 UTC}"
@@ -237,19 +237,19 @@ fi
 # === Collect T3+ configuration (Knowledge Gateway) ===
 # Secrets section: not substituted into template files, only read by Gateway scripts
 ORY_TOKEN=""
-L4_BACKEND=""
-L4_DATABASE_URL=""
+L5_BACKEND=""
+L5_DATABASE_URL=""
 if ! $CORE_ONLY && ! $DRY_RUN; then
-    case "$INSTALL_LEVEL" in T3|T4)
+    case "$INSTALL_LEVEL" in T3|T5)
         echo "Knowledge Gateway (T3+):"
         echo "  Эти параметры используются для подключения личного Pack к платформе."
         echo "  Можно пропустить сейчас (Enter) и заполнить позже вручную в .exocortex.env"
         echo ""
         read -p "  ORY_TOKEN (токен платформы Aisystant, или Enter): " ORY_TOKEN
         if [ -n "$ORY_TOKEN" ]; then
-            read -p "  L4_BACKEND [neon]: " L4_BACKEND
-            L4_BACKEND="${L4_BACKEND:-neon}"
-            read -p "  L4_DATABASE_URL (postgres://...): " L4_DATABASE_URL
+            read -p "  L5_BACKEND [neon]: " L5_BACKEND
+            L5_BACKEND="${L5_BACKEND:-neon}"
+            read -p "  L5_DATABASE_URL (postgres://...): " L5_DATABASE_URL
         fi
         echo ""
         ;;
@@ -281,10 +281,10 @@ INSTALL_LEVEL=$INSTALL_LEVEL
 # === Knowledge Gateway (T3+, NOT substituted into files — read by Gateway scripts only) ===
 # ORY_TOKEN: platform authentication token. Rotate manually if expired. update.sh preserves this value.
 ORY_TOKEN=$ORY_TOKEN
-# L4_BACKEND: personal knowledge backend (neon|supabase|sqlite)
-L4_BACKEND=$L4_BACKEND
-# L4_DATABASE_URL: connection string for personal Pack index (may contain '=' chars — safe to store here)
-L4_DATABASE_URL=$L4_DATABASE_URL
+# L5_BACKEND: personal knowledge backend (neon|supabase|sqlite)
+L5_BACKEND=$L5_BACKEND
+# L5_DATABASE_URL: connection string for personal Pack index (may contain '=' chars — safe to store here)
+L5_DATABASE_URL=$L5_DATABASE_URL
 ENVEOF
     chmod 600 "$ENV_FILE"
     echo "  Configuration saved to $ENV_FILE"
@@ -305,22 +305,22 @@ if $DRY_RUN; then
     PLACEHOLDER_FILES=$(find "$TEMPLATE_DIR" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.plist" -o -name "*.yaml" -o -name "*.yml" \) | wc -l | tr -d ' ')
     echo "  [DRY RUN] Would substitute placeholders in $PLACEHOLDER_FILES files"
     echo "    sviridoves → $GITHUB_USER"
-    echo "    /home/sviridov/IWE → $WORKSPACE_DIR"
-    echo "    /usr/bin/cline → $CLINE_PATH"
-    echo "    -home-sviridov-IWE → $CLINE_PROJECT_SLUG"
+    echo "    /home/vps/IWE → $WORKSPACE_DIR"
+    echo "    /usr/local/bin/cline → $CLINE_PATH"
+    echo "    -home-vps-IWE → $CLINE_PROJECT_SLUG"
     echo "    5 → $TIMEZONE_HOUR"
     echo "    5:00 UTC → $TIMEZONE_DESC"
-    echo "    /home/sviridov → $HOME_DIR"
+    echo "    /home/vps → $HOME_DIR"
 else
     find "$TEMPLATE_DIR" -type f \( -name "*.md" -o -name "*.json" -o -name "*.sh" -o -name "*.plist" -o -name "*.yaml" -o -name "*.yml" \) | while IFS= read -r file; do
         sed_inplace \
             -e "s|sviridoves|$GITHUB_USER|g" \
-            -e "s|/home/sviridov/IWE|$WORKSPACE_DIR|g" \
-            -e "s|/usr/bin/cline|$CLINE_PATH|g" \
-            -e "s|-home-sviridov-IWE|$CLINE_PROJECT_SLUG|g" \
+            -e "s|/home/vps/IWE|$WORKSPACE_DIR|g" \
+            -e "s|/usr/local/bin/cline|$CLINE_PATH|g" \
+            -e "s|-home-vps-IWE|$CLINE_PROJECT_SLUG|g" \
             -e "s|5|$TIMEZONE_HOUR|g" \
             -e "s|5:00 UTC|$TIMEZONE_DESC|g" \
-            -e "s|/home/sviridov|$HOME_DIR|g" \
+            -e "s|/home/vps|$HOME_DIR|g" \
             "$file"
     done
 
@@ -411,11 +411,11 @@ else
     fi
 fi
 
-# === 4. Copy .cline settings ===
+# === 5. Copy .cline settings ===
 if $CORE_ONLY || [ "$INSTALL_LEVEL" = "T1" ]; then
-    echo "[4/6] Cline settings... пропущено (уровень $INSTALL_LEVEL)"
+    echo "[5/6] Cline settings... пропущено (уровень $INSTALL_LEVEL)"
 else
-    echo "[4/6] Installing Cline settings..."
+    echo "[5/6] Installing Cline settings..."
     if $DRY_RUN; then
         if [ -f "$TEMPLATE_DIR/.cline/settings.local.json" ]; then
             echo "  [DRY RUN] Would copy: settings.local.json → $WORKSPACE_DIR/.cline/settings.local.json"
@@ -442,8 +442,8 @@ else
     fi
 fi
 
-# === 4b. Propagate skills, hooks, rules to workspace ===
-echo "[4b] Installing skills, hooks, rules..."
+# === 5b. Propagate skills, hooks, rules to workspace ===
+echo "[5b] Installing skills, hooks, rules..."
 if $DRY_RUN; then
     echo "  [DRY RUN] Would copy .cline/skills/, .cline/hooks/, .cline/rules/ → $WORKSPACE_DIR/.cline/"
 else
@@ -463,8 +463,8 @@ fi
 
 # === 5. Install roles (autodiscovery via role.yaml) ===
 if $CORE_ONLY || [ "$INSTALL_LEVEL" = "T1" ] || [ "$INSTALL_LEVEL" = "T2" ] || [ "$INSTALL_LEVEL" = "T3" ]; then
-    echo "[5/6] Автоматизация... пропущена (уровень $INSTALL_LEVEL — нужен T4)"
-    echo "  Установить позже: bash $TEMPLATE_DIR/setup.sh --level=T4"
+    echo "[5/6] Автоматизация... пропущена (уровень $INSTALL_LEVEL — нужен T5)"
+    echo "  Установить позже: bash $TEMPLATE_DIR/setup.sh --level=T5"
 elif ! command -v launchctl >/dev/null 2>&1; then
     echo "[5/6] Автоматизация... пропущена (launchd не найден — не macOS)"
     echo "  Роли используют launchd (macOS). На Linux используйте cron/systemd вручную."
@@ -607,7 +607,7 @@ else
         echo "  3. Ask Cline: «Открывай» (Day Open)"
         echo ""
         echo "Следующий уровень (роли + автоматизация):"
-        echo "  bash $TEMPLATE_DIR/setup.sh --level=T4"
+        echo "  bash $TEMPLATE_DIR/setup.sh --level=T5"
         echo ""
     else
         echo "  2. cline"

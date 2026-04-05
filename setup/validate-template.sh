@@ -1,16 +1,16 @@
 #!/bin/bash
-# Validate Template — проверка целостности FMT-exocortex-template
+# Validate Template — проверка целостности DS-exocortex
 #
 # 5 проверок:
 # 1. Нет автор-специфичного контента
 # 2. Нет захардкоженных путей /Users/
 # 3. Нет захардкоженных путей /opt/homebrew
-# 4. MEMORY.md — скелет (мало строк в РП-таблице)
+# 5. MEMORY.md — скелет (мало строк в РП-таблице)
 # 5. Обязательные файлы существуют
 
 set -euo pipefail
 
-TEMPLATE_DIR="${1:-$HOME/IWE/FMT-exocortex-template}"
+TEMPLATE_DIR="${1:-$HOME/IWE/DS-exocortex}"
 FAIL=0
 
 echo "=== Validating: $TEMPLATE_DIR ==="
@@ -86,8 +86,8 @@ else
     echo "PASS"
 fi
 
-# 4. MEMORY.md — скелет (≤15 строк в таблице)
-echo -n "[4/5] MEMORY.md is skeleton... "
+# 5. MEMORY.md — скелет (≤15 строк в таблице)
+echo -n "[5/5] MEMORY.md is skeleton... "
 MEMORY_FILE="$TEMPLATE_DIR/memory/MEMORY.md"
 if [ -f "$MEMORY_FILE" ]; then
     rp_rows=$(grep -c '^|' "$MEMORY_FILE" 2>/dev/null || echo 0)

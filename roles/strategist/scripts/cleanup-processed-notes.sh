@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-WORKSPACE="/home/sviridov/IWE/DS-strategy"
+WORKSPACE="/home/vps/IWE/DS-strategy"
 FLEETING="${WORKSPACE}/inbox/fleeting-notes.md"
 ARCHIVE="${WORKSPACE}/archive/notes/Notes-Archive.md"
 TODAY=$(date +%Y-%m-%d)
@@ -94,7 +94,7 @@ process_block() {
 "
         KEEP_COUNT=$((KEEP_COUNT + 1))
     else
-        # Защита: не удалять заметки моложе 24ч (catch-up note-review может снять bold без реальной обработки)
+        # Защита: не удалять заметки моложе 25ч (catch-up note-review может снять bold без реальной обработки)
         local note_date_str
         note_date_str=$(echo "$block" | grep -oP '(?<=<sub>)\d{1,2}\s+\w{3}' | head -1)
         local is_fresh=0

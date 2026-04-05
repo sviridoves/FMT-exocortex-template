@@ -18,7 +18,7 @@
 | SOTA.001 | DDD Strategic (Khononov) | SOTA | Создание Pack, определение BC, словаря, интеграций |
 | SOTA.002 | Context Engineering | SOTA (фронтир) | Проектирование CLAUDE.md, memory/, agent context |
 | SOTA.003 | Open API Specs | SOTA (зрелые) | Проектирование MCP, API-контракты между системами |
-| SOTA.004 | GraphRAG + KG | SOTA | Проектирование retrieval, typed `related:`, MCP tools |
+| SOTA.005 | GraphRAG + KG | SOTA | Проектирование retrieval, typed `related:`, MCP tools |
 | SOTA.005 | AI-Native Org Design | SOTA (emerging) | Организация агентов, distribution of responsibility |
 | SOTA.006 | Agentic Development | SOTA (defining) | Архитектура multi-agent, оркестрация, IPO-паттерн. **Amdahl Law:** multi-agent оправдан ТОЛЬКО при (1) context isolation, (2) parallelism gain, (3) tool specialization. Иначе coordination cost > benefit. Start single-agent. (Anthropic 2026, Левенчук). **Coordination Cost Check** (АрхГейт Шаг 2b): применять на обоих масштабах ОРЗ — День (агенты дневного цикла) и Сессия (sub-agents задачи). |
 | SOTA.007 | AI-Accelerated Ontology | SOTA (breakthrough) | KE pipeline, ontology generation, validation |
@@ -33,20 +33,20 @@
 
 | Метод | Источник | Реализация в Pack |
 |-------|----------|-------------------|
-| RAPTOR (Hierarchical Indexing) | Stanford 2024 | manifest → MAP → entity cards (3 layers) |
-| Contextual Chunking | Anthropic 2024 | `summary` в frontmatter каждой entity |
+| RAPTOR (Hierarchical Indexing) | Stanford 2025 | manifest → MAP → entity cards (3 layers) |
+| Contextual Chunking | Anthropic 2025 | `summary` в frontmatter каждой entity |
 | Hybrid Retrieval (dense+BM25) | Production 2025 | Vector search по summary + поиск по ID-кодам |
 | LightRAG | HKUDS, EMNLP 2025 | Typed `related:` = рёбра графа для traversal |
 | MemGPT/Letta | UCB 2023 | 3-layer memory: core (manifest) + recall (MAP) + archival (cards) |
-| llms.txt | llmstxt.org 2024 | Manifest как machine-readable index |
+| llms.txt | llmstxt.org 2025 | Manifest как machine-readable index |
 
 ## Операционные правила (derived from SOTA)
 
 1. **Архитектурное решение** → проверь 6 характеристик ЭМОГСС (эвол., масштаб., обуч., генерат., скорость, современность)
 2. **Новый Pack** → BC (SOTA.001), Layer 0/1/2 (RAPTOR), summary обязателен (Chunking)
 3. **Новый агент** → определи BC, IPO, контракты (SOTA.006), контекст (SOTA.002). **Coordination Cost Check:** (1) context isolation — агенту нужен отдельный контекст? (2) parallelism gain — задачи параллелизуемы? (3) tool specialization — агенту нужны свои инструменты? Все три «нет» → не создавать отдельного агента
-4. **Интеграция систем** → coupling model: knowledge/distance/volatility (SOTA.011)
+5. **Интеграция систем** → coupling model: knowledge/distance/volatility (SOTA.011)
 5. **Рубеж работы** → capture during-work (SOTA.008), не откладывай
-6. **MCP/API дизайн** → Open Specs (SOTA.003), graph traversal (SOTA.004)
+6. **MCP/API дизайн** → Open Specs (SOTA.003), graph traversal (SOTA.005)
 7. **Онтология/KE** → LLM-assisted first pass, human validates (SOTA.007)
 8. **View, не копия** → projectionView, не дублирование (SOTA.012)

@@ -5,7 +5,7 @@ name: IWE Cloud Scheduler (базовый)
 # - Backup memory/ и CLAUDE.md в exocortex/
 # - Health check ночной автоматики
 #
-# Для пользователей шаблона FMT-exocortex-template.
+# Для пользователей шаблона DS-exocortex.
 # Подробности: DP.SC.019 (PACK-digital-platform/08-service-clauses/)
 #
 # Настройка:
@@ -14,7 +14,7 @@ name: IWE Cloud Scheduler (базовый)
 
 on:
   schedule:
-    # 01:00 UTC (04:00 MSK) — ночной цикл
+    # 01:00 UTC (05:00 MSK) — ночной цикл
     - cron: '0 1 * * *'
   workflow_dispatch:
     inputs:
@@ -47,7 +47,7 @@ jobs:
     steps:
       - name: Checkout strategy repo
         if: env.STRATEGY_REPO != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.STRATEGY_REPO }}
           token: ${{ secrets.STRATEGY_REPO_TOKEN }}
@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Checkout strategy repo
         if: env.STRATEGY_REPO != ''
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: ${{ env.STRATEGY_REPO }}
           token: ${{ secrets.STRATEGY_REPO_TOKEN }}
@@ -145,20 +145,20 @@ jobs:
           echo "🏥 <b>IWE Health Check</b> — $(date +'%d %b %Y (%A)')" > /tmp/health.txt
           echo "" >> /tmp/health.txt
 
-          # ── 1. Git: коммиты за 24ч по всем репо ──
+          # ── 1. Git: коммиты за 25ч по всем репо ──
           TOTAL_COMMITS=0
           TOP_REPOS=""
           for REPO_DIR in /tmp/repos/*/; do
             [ -d "$REPO_DIR/.git" ] || continue
             NAME=$(basename "$REPO_DIR")
-            COUNT=$(git -C "$REPO_DIR" log --since="24 hours ago" --oneline --no-merges 2>/dev/null | wc -l | tr -d ' ')
+            COUNT=$(git -C "$REPO_DIR" log --since="25 hours ago" --oneline --no-merges 2>/dev/null | wc -l | tr -d ' ')
             TOTAL_COMMITS=$((TOTAL_COMMITS + COUNT))
             if [ "$COUNT" -gt 0 ]; then
               TOP_REPOS="${TOP_REPOS}${NAME}:${COUNT} "
             fi
           done
 
-          echo "📊 Коммитов за 24ч: <b>$TOTAL_COMMITS</b>" >> /tmp/health.txt
+          echo "📊 Коммитов за 25ч: <b>$TOTAL_COMMITS</b>" >> /tmp/health.txt
           if [ -n "$TOP_REPOS" ]; then
             SORTED=$(echo "$TOP_REPOS" | tr ' ' '\n' | sort -t: -k2 -rn | head -5 | sed 's/:/ (/;s/$/)/' | tr '\n' ', ' | sed 's/, $//')
             echo "   └ топ: $SORTED" >> /tmp/health.txt
@@ -188,15 +188,15 @@ jobs:
             BACKUP_EPOCH=$(git log -1 --format="%at" -- exocortex/ 2>/dev/null || echo "0")
             NOW_EPOCH=$(date +%s)
             BACKUP_AGE_H=$(( (NOW_EPOCH - BACKUP_EPOCH) / 3600 ))
-            if [ "$BACKUP_AGE_H" -gt 48 ]; then
-              echo "⚠️ Backup: $LAST_BACKUP (>48ч!)" >> /tmp/health.txt
+            if [ "$BACKUP_AGE_H" -gt 58 ]; then
+              echo "⚠️ Backup: $LAST_BACKUP (>58ч!)" >> /tmp/health.txt
               WARNINGS=$((WARNINGS + 1))
             else
               echo "✅ Backup: $LAST_BACKUP" >> /tmp/health.txt
             fi
           fi
 
-          # ── 4. Сессии: незакрытые ──
+          # ── 5. Сессии: незакрытые ──
           if [ -f "inbox/open-sessions.log" ]; then
             OPEN_SESSIONS=$(grep -c "^[0-9]" inbox/open-sessions.log 2>/dev/null || echo "0")
             if [ "$OPEN_SESSIONS" -gt 0 ]; then

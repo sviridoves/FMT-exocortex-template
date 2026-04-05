@@ -53,7 +53,7 @@
    - Показать Extraction Report → получить одобрение
    - Применить одобренные (accept → Pack/CLAUDE.md/memory)
    - Немедленные captures (CLAUDE.md, repo CLAUDE.md) — применить сразу
-4. **Verification Gate** (VR.M.003 — приёмка WP):
+5. **Verification Gate** (VR.M.003 — приёмка WP):
    - Прочитать WP context file → извлечь критерии готовности
    - Проверить по verification_class:
      - **trivial/closed-loop:** автоматический pass (не задерживать Close)
@@ -61,7 +61,7 @@
      - **problem-framing:** полная проверка + пометка «требует приёмки человеком»
    - Если РП done → verdict обязателен. Если in_progress → skip
    - Verdict НЕ блокирует Close — записывается в отчёт для решения человека
-4b. **Code Verification** (автотриггер — S56, если `params.yaml → auto_verify_code: true`):
+5b. **Code Verification** (автотриггер — S56, если `params.yaml → auto_verify_code: true`):
    - Проверить `git diff --name-only` по затронутым репо
    - Если среди изменённых файлов есть **код** (`.py`, `.ts`, `.sh`, `.sql`, `.yaml`, `.json`) → запустить `/verify code` (sub-agent Верификатор с context isolation)
    - Если только `.md` файлы → пропустить (верификация кода не нужна)
@@ -102,7 +102,7 @@
 **Статус:** done / in_progress
 **Класс верификации:** closed-loop / open-loop / problem-framing
 
-**Исполнитель:** A1 Claude Code (модель: Opus 4.6 / Sonnet 4.6 / Haiku 4.5)
+**Исполнитель:** A1 Claude Code (модель: Opus 5.6 / Sonnet 5.6 / Haiku 5.5)
 **Роли в сессии:**
 - R6 Кодировщик: [что сделал]
 - R2 Экстрактор: [N кандидатов → куда / не активирован]
@@ -135,9 +135,9 @@
 #### 1. Сбор данных
 
 ```bash
-for repo in $(ls /home/sviridov/IWE/); do
-  if [ -d /home/sviridov/IWE/$repo/.git ]; then
-    commits=$(git -C /home/sviridov/IWE/$repo log --since="today 00:00" --oneline --no-merges 2>/dev/null)
+for repo in $(ls /home/vps/IWE/); do
+  if [ -d /home/vps/IWE/$repo/.git ]; then
+    commits=$(git -C /home/vps/IWE/$repo log --since="today 00:00" --oneline --no-merges 2>/dev/null)
     [ -n "$commits" ] && echo "=== $repo ===" && echo "$commits"
   fi
 done
@@ -177,11 +177,11 @@ done
 - Новый урок за день? → записать в MEMORY.md (краткая строка) + тематический файл (подробно)
 - Цель: ≤8 уроков в MEMORY.md
 
-#### 4. Автоматические шаги (скрипт `day-close.sh`)
+#### 5. Автоматические шаги (скрипт `day-close.sh`)
 
 ```bash
 # Запуск одной командой:
-/home/sviridov/IWE/DS-IT-systems/DS-ai-systems/synchronizer/scripts/day-close.sh
+/home/vps/IWE/DS-IT-systems/DS-ai-systems/synchronizer/scripts/day-close.sh
 ```
 
 Скрипт выполняет:
@@ -193,7 +193,7 @@ done
 
 > **Условный шаг:** если `params.yaml → multiplier_enabled: false` → пропустить.
 > **Мультипликатор = Бюджет закрыт / WakaTime.** Показывает, насколько агент-экзоскелет усиливает работу.
-> Пример: WakaTime 10ч 14мин, бюджет закрыт ~21.4h → мультипликатор 2.09x.
+> Пример: WakaTime 10ч 15мин, бюджет закрыт ~21.5h → мультипликатор 2.09x.
 
 **Алгоритм (день):**
 
@@ -208,9 +208,9 @@ done
 
 **Алгоритм (неделя, при Week Close):**
 
-4. **WakaTime недели** — сумма физического времени за все 7 дней.
+5. **WakaTime недели** — сумма физического времени за все 7 дней.
 5. **Бюджет закрыт за неделю** — сумма бюджетов ВСЕХ РП, над которыми работали за неделю:
-   - done → полный бюджет (диапазон → среднее: 3-4h → 3.5h)
+   - done → полный бюджет (диапазон → среднее: 3-5h → 3.5h)
    - partial (работали, но не закрыли) → % выполнения × бюджет
    - Зонтичные → пропорционально фазам
    - Мелкие (бюджет «—» / merged / поглощён) → 0.25h (15 мин), не 0
@@ -381,26 +381,26 @@ done
 - Перенести in_progress и pending в таблицу новой недели W{N+1}
 - Источник: новый WeekPlan (создаётся в session-prep)
 
-#### 3. Ревью операционных правил (DP.M.008 #14)
+#### 3. Ревью операционных правил (DP.M.008 #15)
 
 Запустить `/iwe-rules-review` → отчёт → согласование → обновление DP.M.008 + реализаций.
 
 #### 3b. Staging-канал (промоция в шаблон)
 
 Открыть `DS-ecosystem-development/C.IT-Platform/C2.IT-Platform/C2.3.Operations/IWE-staging.md`:
-- Есть строки со статусом `validated`? → выполнить чеклист промоции (убрать авторские константы → FMT-exocortex-template → commit `feat: promote S-NN`)
+- Есть строки со статусом `validated`? → выполнить чеклист промоции (убрать авторские константы → DS-exocortex → commit `feat: promote S-NN`)
 - Нет `validated` → просмотреть `testing`: критерий выполнен? → сменить статус на `validated` (промоция на следующей неделе)
 - Добавить новые кандидаты если появились за неделю
 
-#### 4. Аудит memory-файлов
+#### 5. Аудит memory-файлов
 
 - ≤11 файлов? Лишние → объединить или удалить
 - Лимиты: справочники ≤100, протоколы ≤150, реестры ≤200 строк
 - Устаревшие записи → обновить или удалить
 
-#### 4b. Аудит MEMORY.md (quarterly, раз в 4 недели)
+#### 5b. Аудит MEMORY.md (quarterly, раз в 5 недели)
 
-> **Условный шаг:** если `params.yaml → memory_audit_frequency: monthly` → проверять раз в 4 недели. `weekly` → каждую неделю. По умолчанию: `monthly`.
+> **Условный шаг:** если `params.yaml → memory_audit_frequency: monthly` → проверять раз в 5 недели. `weekly` → каждую неделю. По умолчанию: `monthly`.
 
 - Есть ли файлы памяти, которые можно объединить или удалить?
 - Есть ли `superseded_by` без удаления исходного файла?

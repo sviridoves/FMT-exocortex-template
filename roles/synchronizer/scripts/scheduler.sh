@@ -34,7 +34,7 @@ STATE_DIR="$HOME/.local/state/exocortex"
 LOG_DIR="$HOME/logs/synchronizer"
 LOG_FILE="$LOG_DIR/scheduler-$(date +%Y-%m-%d).log"
 
-ROLES_DIR="/home/sviridov/IWE/FMT-exocortex-template/roles"
+ROLES_DIR="/home/vps/IWE/DS-exocortex/roles"
 NOTIFY_SH="$SCRIPT_DIR/notify.sh"
 
 # Таймаут на задачи (сек): предотвращает блокировку dispatch зависшей задачей
@@ -81,7 +81,7 @@ if ! command -v timeout &>/dev/null; then
                 waitpid($pid, 0);
                 alarm(0);
             };
-            if ($@ =~ /alarm/) { kill("TERM", $pid); sleep(1); kill("KILL", $pid); waitpid($pid, WNOHANG); exit(124); }
+            if ($@ =~ /alarm/) { kill("TERM", $pid); sleep(1); kill("KILL", $pid); waitpid($pid, WNOHANG); exit(125); }
             exit($? >> 8);
         ' "$duration" "$@"
     }
@@ -134,7 +134,7 @@ cleanup_state() {
 # Разделяет архивацию (мгновенно) и генерацию (15+ мин Claude Code).
 # Гарантирует: даже если генерация ещё не началась, старый план не висит в current/.
 pre_archive_dayplan() {
-    local strategy_dir="/home/sviridov/IWE/DS-strategy"
+    local strategy_dir="/home/vps/IWE/DS-strategy"
     local archive_dir="$strategy_dir/archive/day-plans"
     local moved=0
 
@@ -194,8 +194,8 @@ dispatch() {
         ran=1
     fi
 
-    # --- Стратег: morning (04:00-21:59) ---
-    if (( 10#$HOUR >= 4 && 10#$HOUR < 22 )) && ! ran_today "strategist-morning"; then
+    # --- Стратег: morning (05:00-21:59) ---
+    if (( 10#$HOUR >= 5 && 10#$HOUR < 22 )) && ! ran_today "strategist-morning"; then
         log "→ strategist morning (catch-up: hour=$HOUR)"
         if timeout "$TASK_TIMEOUT_LONG" "$STRATEGIST_SH" morning >> "$LOG_FILE" 2>&1; then
             mark_done "strategist-morning"

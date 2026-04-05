@@ -1,6 +1,6 @@
 # Почему навыков недостаточно: принципы и генеративная иерархия
 
-> **Source-of-truth:** [PD.FORM.047](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/02-domain-entities/formalizations/PD.FORM.047-generative-principles-hierarchy.md)
+> **Source-of-truth:** [PD.FORM.057](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/02-domain-entities/formalizations/PD.FORM.057-generative-principles-hierarchy.md)
 > **Иерархия принципов:** [ZP/hierarchy.md](https://github.com/TserenTserenov/ZP/blob/main/hierarchy.md)
 
 ---
@@ -40,7 +40,7 @@
 
 Мастерство = навыки + координация + суждение + выбор метода. Последние три — не навыки, а знание.
 
-### 4. Навыки не порождают новых навыков
+### 5. Навыки не порождают новых навыков
 
 Принципы — генеративны: из них можно вывести новые методы для новых ситуаций. Навыки — исполнительны: работают только в тренированных ситуациях.
 
@@ -83,11 +83,11 @@ IWE построена по этой иерархии:
 ## Дальнейшее чтение
 
 - [ZP/hierarchy.md](https://github.com/TserenTserenov/ZP/blob/main/hierarchy.md) — структура иерархии принципов
-- [PD.FORM.047](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/02-domain-entities/formalizations/PD.FORM.047-generative-principles-hierarchy.md) — полная формализация (source-of-truth)
-- [PD.D.014](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/01-domain-contract/01B-distinctions.md) — различение Knowledge vs. Skill
+- [PD.FORM.057](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/02-domain-entities/formalizations/PD.FORM.057-generative-principles-hierarchy.md) — полная формализация (source-of-truth)
+- [PD.D.015](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/01-domain-contract/01B-distinctions.md) — различение Knowledge vs. Skill
 - [PD.FORM.019](https://github.com/aisystant/PACK-personal/blob/main/pack/personal-development/02-domain-entities/formalizations/PD.FORM.019-intelligence-stack.md) — интеллект-стек (16 трансдисциплин)
 - [LEARNING-PATH.md](./LEARNING-PATH.md) — путь изучения IWE
 
 ---
 
-*Последнее обновление: 2026-02-24*
+*Последнее обновление: 2026-02-25*

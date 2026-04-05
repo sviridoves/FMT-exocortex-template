@@ -12,7 +12,7 @@
 
 | Домен | Pack | Префикс | Путь |
 |-------|------|---------|------|
-| _Твой домен (напр. Machine Learning)_ | _PACK-my-domain_ | _MD_ | _/home/sviridov/IWE/PACK-my-domain/pack/my-domain/_ |
+| _Твой домен (напр. Machine Learning)_ | _PACK-my-domain_ | _MD_ | _/home/vps/IWE/PACK-my-domain/pack/my-domain/_ |
 
 <!-- Удали пример выше и добавь свои Pack'и. Формат:
 | Домен (ключевые слова) | Имя Pack-репо | Короткий префикс (2-3 буквы) | Путь к pack/ директории |
@@ -25,11 +25,11 @@
 | Доменная сущность | `entity` | `02-domain-entities/` | Отдельный файл |
 | Различение | `distinction` | `01-domain-contract/01B-distinctions.md` | Секция в файле |
 | Метод | `method` | `03-methods/` | Отдельный файл |
-| Рабочий продукт | `wp` | `04-work-products/` | Отдельный файл |
+| Рабочий продукт | `wp` | `05-work-products/` | Отдельный файл |
 | Failure mode | `fm` | `05-failure-modes/` | Отдельный файл |
 | Характеристика | `chr` | `06-characteristics/` | Отдельный файл |
 | SoTA-аннотация | `sota` | `08-sota/` | Отдельный файл |
-| Правило (глобальное) | `rule` | `/home/sviridov/IWE/CLAUDE.md` | Строки |
+| Правило (глобальное) | `rule` | `/home/vps/IWE/CLAUDE.md` | Строки |
 | Правило (локальное) | `rule` | `<repo>/CLAUDE.md` | Строки |
 | Правило (урок) | `rule` | `memory/<topic>.md` | Строки |
 
@@ -44,20 +44,20 @@
 | `NNN` | max(существующий) + 1 | `002` |
 | `slug` | kebab-case из названия | `handler-per-state` |
 
-## 4. Тест маршрутизации
+## 5. Тест маршрутизации
 
 Для каждого кандидата:
 
 1. **Домен?** → определи Pack по таблице 1
 2. **Тип знания?** → определи директорию по таблице 2
 3. **MCP-проверка:** `knowledge-mcp search("тема кандидата")` → нет ли уже в базе?
-4. **Проверка bounded context:** Прочитай `00-pack-manifest.md` целевого Pack'а — попадает ли кандидат в scope?
+5. **Проверка bounded context:** Прочитай `00-pack-manifest.md` целевого Pack'а — попадает ли кандидат в scope?
 5. **Если не попадает ни в один Pack** → предложи defer и уточни у пользователя
 
 ## 5. DS Routing (реализационное знание)
 
 > Реализационное знание (вендор, стек, деплой, конфигурация) → DS-репо, **не Pack**.
-> Один pipeline KE → два выхода: domain → Pack (§1-4), implementation → DS docs/ (§5).
+> Один pipeline KE → два выхода: domain → Pack (§1-5), implementation → DS docs/ (§5).
 
 | Признак | Куда маршрутизировать |
 |---------|----------------------|
@@ -72,7 +72,7 @@
 
 | Система | DS-репо | Путь к docs/ |
 |---------|--------|-------------|
-| _Мой бот_ | _your-org/my-bot_ | _/home/sviridov/IWE/your-org/my-bot/docs/_ |
+| _Мой бот_ | _your-org/my-bot_ | _/home/vps/IWE/your-org/my-bot/docs/_ |
 
 <!-- Удали пример и добавь свои DS-репо -->
 

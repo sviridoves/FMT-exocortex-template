@@ -30,13 +30,13 @@
 ```markdown
 | Домен | Pack | Префикс | Путь |
 |-------|------|---------|------|
-| Мой домен | PACK-my-domain | MD | /home/sviridov/IWE/PACK-my-domain/pack/my-domain/ |
+| Мой домен | PACK-my-domain | MD | /home/vps/IWE/PACK-my-domain/pack/my-domain/ |
 ```
 
 ### 2. (Опционально) Установи автоматический inbox-check
 
 ```bash
-cd /home/sviridov/IWE/FMT-exocortex-template/roles/extractor
+cd /home/vps/IWE/DS-exocortex/roles/extractor
 bash install.sh
 ```
 
@@ -46,10 +46,10 @@ bash install.sh
 
 ```bash
 # Inbox-check (без launchd)
-bash /home/sviridov/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh inbox-check
+bash /home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh inbox-check
 
 # Knowledge Audit
-bash /home/sviridov/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh audit
+bash /home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh audit
 ```
 
 ## Как работает
@@ -62,9 +62,9 @@ Knowledge Extraction Pipeline:
   1. Найти знания (captures + пропущенные инсайты)
   2. Определить тип (entity, distinction, method, fm, wp, rule)
   3. Определить: domain или implementation? (тест доменности)
-     ├─ domain → Pack по домену (routing.md §1-4)
+     ├─ domain → Pack по домену (routing.md §1-5)
      └─ implementation → DS docs/ по системе (routing.md §5)
-  4. Создать файл: Pack → шаблон SPF; DS → шаблон docs/
+  5. Создать файл: Pack → шаблон SPF; DS → шаблон docs/
   5. Проверить: нет ли дубликатов и противоречий
   6. Показать Extraction Report пользователю
   7. Записать только одобренное
@@ -88,7 +88,7 @@ Knowledge Extraction Pipeline:
 1. **Human-in-the-loop:** Экстрактор предлагает, не записывает без одобрения
 2. **Один пайплайн:** Все сценарии используют classify → route → formalize → validate
 3. **Тест универсальности:** Можно использовать в другом контексте? Нет → governance, не экстрагируй
-4. **Lazy reading:** Inbox-check читает только целевой Pack, не все сразу
+5. **Lazy reading:** Inbox-check читает только целевой Pack, не все сразу
 
 ---
 

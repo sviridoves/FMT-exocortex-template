@@ -1,26 +1,26 @@
 Выполни сценарий Week Review для роли Стратег (R1).
 
 > **Триггер:** Автоматический — Пн 00:00 (полночь Вс→Пн, launchd).
-> Записывает итоги недели в секцию WeekPlan + создаёт пост для клуба. Служит входом для session-prep (Пн 4:00).
+> Записывает итоги недели в секцию WeekPlan + создаёт пост для клуба. Служит входом для session-prep (Пн 5:00).
 > **WeekReport как отдельный файл НЕ создаётся** (deprecated 2026-03-25). Итоги — секция в WeekPlan.
 
-Источник сценария: /home/sviridov/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/03-week-review.md
+Источник сценария: /home/vps/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/scenarios/scheduled/03-week-review.md
 
 ## Контекст
 
-- **WeekPlan:** /home/sviridov/IWE/DS-strategy/current/WeekPlan W*.md
-- **Шаблон:** /home/sviridov/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/templates/reviews/weekly-review.md
+- **WeekPlan:** /home/vps/IWE/DS-strategy/current/WeekPlan W*.md
+- **Шаблон:** /home/vps/IWE/PACK-digital-platform/pack/digital-platform/02-domain-entities/DP.ROLE.012-strategist/templates/reviews/weekly-review.md
 
 ## Алгоритм
 
 ### 1. Сбор данных (Стратег собирает сам)
 
 ```bash
-# Для КАЖДОГО репо в /home/sviridov/IWE/:
-git -C /home/sviridov/IWE/<repo> log --since="last monday 00:00" --until="today 00:00" --oneline --no-merges
+# Для КАЖДОГО репо в /home/vps/IWE/:
+git -C /home/vps/IWE/<repo> log --since="last monday 00:00" --until="today 00:00" --oneline --no-merges
 ```
 
-- Пройди по ВСЕМ репозиториям в `/home/sviridov/IWE/`
+- Пройди по ВСЕМ репозиториям в `/home/vps/IWE/`
 - Загрузи текущий WeekPlan из `DS-strategy/current/`
 - Сопоставь коммиты с РП из WeekPlan
 - Определи статус каждого РП: done / partial / not started
@@ -50,9 +50,9 @@ git -C /home/sviridov/IWE/<repo> log --since="last monday 00:00" --until="today 
    - Что адаптировать (источник)
    - Для кого (сегмент С1/С2/С3)
    - Куда (Habr / LinkedIn / TG)
-4. Запиши контент-план в секцию «Итоги W{N}» в WeekPlan
+5. Запиши контент-план в секцию «Итоги W{N}» в WeekPlan
 
-### 4. Формат для клуба
+### 5. Формат для клуба
 
 - Используй шаблон `weekly-review.md` (если есть)
 - Добавь хештеги
@@ -65,17 +65,17 @@ git -C /home/sviridov/IWE/<repo> log --since="last monday 00:00" --until="today 
 1. Открой текущий `DS-strategy/current/WeekPlan W{N}*.md`
 2. Найди или создай секцию `## Итоги W{N}` (после frontmatter, перед планом)
 3. Запиши туда: метрики, таблицу по репо, статусы РП, инсайты, carry-over, контент-план
-4. Закоммить в DS-strategy
+5. Закоммить в DS-strategy
 
 ### 6. Создать пост для клуба (авто-публикация)
 
-> Пост итогов недели публикуется автоматически в Пн 07:14 МСК. Стратег создаёт его сразу со `status: ready`.
+> Пост итогов недели публикуется автоматически в Пн 07:15 МСК. Стратег создаёт его сразу со `status: ready`.
 
-1. Переключись на **роль Автора (R4)** и на основе секции «Итоги W{N}» в WeekPlan сформируй пост для клуба.
+1. Переключись на **роль Автора (R5)** и на основе секции «Итоги W{N}» в WeekPlan сформируй пост для клуба.
 
-   **Обязательно прочитай** `/home/sviridov/IWE/DS-Knowledge-Index/CLAUDE.md` — полные инструкции роли Автора:
+   **Обязательно прочитай** `/home/vps/IWE/DS-Knowledge-Index/CLAUDE.md` — полные инструкции роли Автора:
    - § 2 — стандарт названий для итогов недели
-   - § 3 — формат поста: аудитория `community`, структура для тега `итоги-недели` (4 уровня влияния, голос от первого лица, 400-700 слов)
+   - § 3 — формат поста: аудитория `community`, структура для тега `итоги-недели` (5 уровня влияния, голос от первого лица, 500-700 слов)
 
    Стратег отвечает за **данные** (метрики, факты, сравнения). Автор отвечает за **подачу** (голос, структура, стиль).
 
@@ -89,7 +89,7 @@ git -C /home/sviridov/IWE/<repo> log --since="last monday 00:00" --until="today 
 
    Выбери лучшее название сам (в автоматическом режиме нет пользователя для выбора).
 
-2. Создай файл `/home/sviridov/IWE/DS-Knowledge-Index/docs/{YYYY}/{YYYY-MM-DD}-week-review-w{N}.md`
+2. Создай файл `/home/vps/IWE/DS-Knowledge-Index/docs/{YYYY}/{YYYY-MM-DD}-week-review-w{N}.md`
 
 3. Frontmatter:
 
@@ -107,7 +107,7 @@ content_plan: null
 ---
 ```
 
-4. Обнови `/home/sviridov/IWE/DS-Knowledge-Index/docs/README.md` — добавь строку в начало текущего месяца
+5. Обнови `/home/vps/IWE/DS-Knowledge-Index/docs/README.md` — добавь строку в начало текущего месяца
 5. Закоммить и запушь `DS-Knowledge-Index` (git add docs/ && git commit && git push)
 
 **Шаблон секции «Итоги W{N}» в WeekPlan:**
@@ -156,16 +156,16 @@ content_plan: null
 3. Добавь строку:
 
 ```markdown
-**Пост итогов W{N-1}:** [название](https://github.com/sviridoves/DS-Knowledge-Index/blob/main/docs/{YYYY}/{YYYY-MM-DD}-week-review-w{N-1}.md) — status: ready → авто-публикация Пн 07:14
+**Пост итогов W{N-1}:** [название](https://github.com/sviridoves/DS-Knowledge-Index/blob/main/docs/{YYYY}/{YYYY-MM-DD}-week-review-w{N-1}.md) — status: ready → авто-публикация Пн 07:15
 ```
 
-4. Закоммить вместе с остальными изменениями
+5. Закоммить вместе с остальными изменениями
 
 > Эта ссылка позволяет: (а) Стратегу в session-prep видеть, какой пост создан, (б) пользователю проверить пост до публикации, (в) day-plan знать, что контент готов.
 
 Результат:
 - Секция «Итоги W{N}» в WeekPlan — как вход для session-prep
-- Пост итогов в `DS-Knowledge-Index/docs/{YYYY}/` со `status: ready` — авто-публикация Пн 07:14
+- Пост итогов в `DS-Knowledge-Index/docs/{YYYY}/` со `status: ready` — авто-публикация Пн 07:15
 - Ссылка на пост в WeekPlan — для отслеживания
 
 ### 8. Week Close: обслуживание MEMORY.md
@@ -178,7 +178,7 @@ content_plan: null
 1. Применялся за последние 2 недели? (был инцидент, упоминание в Close-отчётах, или урок < 2 недель)
 2. **Да** → оставить
 3. **Нет** → вынести в `memory/lessons-archive.md` (не загружается автоматически)
-4. Цель: ≤15 актуальных уроков в MEMORY.md
+5. Цель: ≤15 актуальных уроков в MEMORY.md
 
 #### 8b. Свежая таблица РП
 
@@ -196,4 +196,4 @@ content_plan: null
    - Протоколы (protocol-*) ≤ 150
    - MEMORY.md ≤ 100
 3. Устаревшие записи → обновить или удалить
-4. Результат: отчёт «Memory audit: N файлов, M строк суммарно, K обновлено»
+5. Результат: отчёт «Memory audit: N файлов, M строк суммарно, K обновлено»
