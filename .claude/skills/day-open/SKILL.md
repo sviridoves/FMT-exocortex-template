@@ -74,7 +74,7 @@ Mandatory РП отсутствуют в WeekPlan → «Требует вним�
 ### 5. IWE за ночь (светофор)
 Scheduler report, update.sh, template-sync, MCP reindex, Scout. 🟢/🟡/🔴.
 
-**Проверка обновлений:** `cd /home/sviridov/IWE/DS-exocortex && bash update.sh --check 2>&1`. Если доступно обновление → добавить в «Требует внимания»: «Доступно обновление IWE → `/iwe-update`».
+**Проверка обновлений:** `cd /home/sviridov/IWE/FMT-exocortex-template && bash update.sh --check 2>&1`. Если доступно обновление → добавить в «Требует внимания»: «Доступно обновление IWE → `/iwe-update`».
 
 ### 5b. Бот QA
 Feedback-triage report → дельта, urgent. Фильтр 2 дня. Нет новых → «нет новых за 2 дня».

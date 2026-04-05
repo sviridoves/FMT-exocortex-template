@@ -44,7 +44,7 @@
 
 | Тип знания | Куда | Когда | Через KE? |
 |------------|------|-------|-----------|
-| Правило для всех репо (1-3 строки) | `/Users/tserentserenov/IWE/CLAUDE.md` | Сразу | Нет |
+| Правило для всех репо (1-3 строки) | `/home/sviridov/IWE/CLAUDE.md` | Сразу | Нет |
 | Правило для одного репо (1-3 строки) | `<repo>/CLAUDE.md` | Сразу | Нет |
 | Доменное (архитектура, паттерны) | Соответствующий Pack | Close | Да (KE) |
 | Различение, метод, FM, WP | Соответствующий Pack | Close | Да (KE) |
@@ -54,6 +54,8 @@
 | Крупный урок | `memory/<topic>.md` | Close | Нет |
 | Зерно для поста (связное рассуждение) | `DS-strategy/drafts/draft-list.md` + `drafts/` | Close | Нет |
 | **Идея для контента** (тема + сегмент ЦА) | `DS-strategy/drafts/draft-list.md` | Сразу | Нет |
+
+> **Temporal metadata (bi-temporal):** При записи memory-файла добавлять `valid_from: YYYY-MM-DD` в frontmatter. При устаревании факта -- добавить `superseded_by: <файл или описание>` вместо удаления. Это позволяет отличить свежий факт от устаревшего машинно. Поля опциональны -- добавлять постепенно, не ломая существующие файлы.
 
 > **Все строки — captures.** В Close-отчёте указывать ВСЕ направления, не только Pack (HD #29: доменное → Pack, реализационное → DS).
 
@@ -144,7 +146,7 @@
 
 **Если все три → предложить:** *«Skill candidate: [название] — [что делает]. Оформить как `.claude/skills/[name]/SKILL.md`?»*
 
-**Куда:** DS-exocortex/.claude/skills/ (первоисточник) → sync → рабочий /Users/tserentserenov/IWE/.claude/skills/
+**Куда:** FMT-exocortex-template/.claude/skills/ (первоисточник) → sync → рабочий /home/sviridov/IWE/.claude/skills/
 
 ## 2d. Review критических документов (Q-bundles + двухуровневый review)
 

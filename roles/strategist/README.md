@@ -1,6 +1,6 @@
 # Стратег (R1)
 
-> **Модуль шаблона:** `roles/strategist/` в [DS-exocortex](../../README.md)
+> **Модуль шаблона:** `roles/strategist/` в [FMT-exocortex-template](../../README.md)
 > **Роль:** R1 Стратег — планирование и отслеживание (DP.D.033 §7, DP.ROLE.001)
 
 Роль Стратег автоматизирует операционное планирование: утренние планы, вечерние итоги, недельные обзоры. Текущий исполнитель: Claude (A1, Grade 3-4).
@@ -10,7 +10,7 @@
 ## Архитектура: Промпты → Стратег → Результаты
 
 ```
-DS-exocortex/              DS-strategy/ (отдельный репо)
+FMT-exocortex-template/              DS-strategy/ (отдельный репо)
   roles/strategist/                     current/
     prompts/                              WeekPlan W{N}.md
       add-wp.md                           ~~WeekReport W{N}.md~~ (deprecated → секция «Итоги W{N}» в WeekPlan)

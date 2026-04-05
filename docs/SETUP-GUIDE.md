@@ -198,7 +198,7 @@ VS Code — редактор кода с графическим интерфей
 
 ### 1.1 Создай рабочую папку
 
-Создай на своём компьютере **одну папку** для всех репозиториев — текущих и будущих. В неё будут клонироваться все репозитории: `DS-exocortex/`, `DS-strategy/`, `PACK-{область}/`, `DS-{проекты}/` и др. `CLAUDE.md` тоже будет лежать в корне этой папки. По умолчанию это `~/IWE`:
+Создай на своём компьютере **одну папку** для всех репозиториев — текущих и будущих. В неё будут клонироваться все репозитории: `FMT-exocortex-template/`, `DS-strategy/`, `PACK-{область}/`, `DS-{проекты}/` и др. `CLAUDE.md` тоже будет лежать в корне этой папки. По умолчанию это `~/IWE`:
 
 ```bash
 mkdir -p ~/IWE
@@ -216,8 +216,8 @@ cd ~/IWE
 cd ~/IWE
 
 # Форкнуть шаблон на свой GitHub и склонировать
-gh repo fork TserenTserenov/DS-exocortex --clone
-cd DS-exocortex
+gh repo fork TserenTserenov/FMT-exocortex-template --clone
+cd FMT-exocortex-template
 
 # Запустить установку
 bash setup.sh
@@ -230,7 +230,6 @@ bash setup.sh
 | Вопрос | Что ввести | Пример |
 |--------|-----------|--------|
 | GitHub username | Твой логин на GitHub | `ivan-petrov` |
-| Имя экзокортекс-репо | Название твоего репо | `DS-exocortex` (по умолчанию) |
 | Workspace directory | Рабочая папка | Просто нажми Enter (определяется автоматически) |
 | Claude CLI path | Путь к claude | Просто нажми Enter (определяется автоматически) |
 | Strategist launch hour (UTC) | Час запуска Стратега | `4` (= 7:00 MSK, 8:00 Алматы) |
@@ -265,9 +264,9 @@ launchctl list | grep strategist
 
 ### 1.3b Подключи MCP-серверы
 
-MCP (Model Context Protocol) — это доступ Claude Code к базе знаний платформы: документам, руководствам, цифровому двойнику. MCP-серверы подключаются через claude.ai (не локально).
+MCP (Model Context Protocol) -- это доступ Claude Code к базе знаний платформы: документам, руководствам, цифровому двойнику.
 
-> **Зачем:** Документация и Pack-сущности (DP.IWE.001, DP.ARCH.001 и др.) ссылаются на source-of-truth в PACK-digital-platform. После подключения MCP Claude сможет находить эти сущности по запросу. Без MCP — сущности доступны только как файлы на GitHub.
+> **Зачем:** Документация и Pack-сущности (DP.IWE.001, DP.ARCH.001 и др.) ссылаются на source-of-truth в PACK-digital-platform. После подключения MCP Claude сможет находить эти сущности по запросу. Без MCP -- сущности доступны только как файлы на GitHub.
 
 **Подключение:**
 
@@ -276,14 +275,29 @@ MCP (Model Context Protocol) — это доступ Claude Code к базе з�
 3. Добавь MCP-сервер: `https://digital-twin-mcp.aisystant.workers.dev/mcp`
 4. Перезапусти Claude Code
 
-**Проверка:**
+**Как работает:** Claude Code подключается к MCP-серверам платформы через claude.ai connectors. Серверы предоставляют инструменты (`search`, `get_document`, `knowledge_feedback`).
 
-Открой Claude Code в папке экзокортекса и набери `/mcp` — оба сервера должны быть в статусе Connected. Затем попроси:
+#### Проверка
+
+Открой Claude Code в папке экзокортекса и набери `/mcp` -- серверы должны быть в статусе Connected. Затем попроси:
 > Найди документы про принципы
 
 Claude должен использовать `knowledge-mcp search("принципы")` и вернуть список документов из базы знаний.
 
-> **Не работает?** Проверь `/mcp` — серверы должны отображаться со статусом Connected. Если их нет — повтори шаги 1-4 выше.
+**Диагностика:**
+
+```bash
+# Проверить всю установку (env, файлы, extensions, MCP-доступность)
+bash FMT-exocortex-template/setup.sh --validate
+```
+
+| Проблема | Решение |
+|----------|---------|
+| `/mcp` -- серверов нет | Повтори шаги 1-4 (claude.ai connectors) |
+| `knowledge-mcp` -- connection error | Проверь интернет-соединение |
+| `--validate` показывает ошибки | Следуй подсказкам. Недостающие ключи -- заполни в `.exocortex.env` |
+
+> **Подсказка:** `setup.sh --validate` проверяет ВСЕ категории сразу: env-конфиг, обязательные файлы, extensions, MCP-доступность.
 
 ### 1.4 Установка дополнительных ролей (позже)
 
@@ -291,7 +305,7 @@ Setup.sh устанавливает только Стратега. Экстра�
 
 В терминале:
 ```bash
-cd ~/IWE/DS-exocortex
+cd ~/IWE/FMT-exocortex-template
 
 # Экстрактор — извлечение знаний из сессий, проверка inbox (каждые 3 часа)
 bash roles/extractor/install.sh
@@ -309,7 +323,7 @@ bash roles/synchronizer/install.sh
 
 **`CLAUDE.md` не найден:**
 ```bash
-cp ~/IWE/DS-exocortex/CLAUDE.md ~/IWE/CLAUDE.md
+cp ~/IWE/FMT-exocortex-template/CLAUDE.md ~/IWE/CLAUDE.md
 ```
 
 **Memory не найдена:**
@@ -320,12 +334,12 @@ echo $HOME/IWE | tr '/' '-'
 
 # Создай директорию и скопируй
 mkdir -p ~/.claude/projects/-Users-ivan-IWE/memory
-cp ~/IWE/DS-exocortex/memory/*.md ~/.claude/projects/-Users-ivan-IWE/memory/
+cp ~/IWE/FMT-exocortex-template/memory/*.md ~/.claude/projects/-Users-ivan-IWE/memory/
 ```
 
 **launchd не загружен:**
 ```bash
-cd ~/IWE/DS-exocortex/roles/strategist
+cd ~/IWE/FMT-exocortex-template/roles/strategist
 bash install.sh
 ```
 
@@ -623,25 +637,25 @@ schtasks /create /tn "ExocortexWake" /tr "wsl ~/IWE/scripts/scheduler.sh dispatc
 В терминале:
 ```bash
 # План дня прямо сейчас
-bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh day-plan
+bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh day-plan
 
 # Сессия стратегирования (интерактивная)
-bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh strategy-session
+bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh strategy-session
 
 # Обзор заметок
-bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh note-review
+bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh note-review
 
 # Итоги недели
-bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh week-review
+bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh week-review
 
 # Экстрактор: извлечь знания из текущей сессии
-bash ~/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh session-close
+bash ~/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh session-close
 
 # Экстрактор: проверить inbox
-bash ~/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh inbox-check
+bash ~/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh inbox-check
 
 # Синхронизатор: статус всех задач
-bash ~/IWE/DS-exocortex/roles/synchronizer/scripts/scheduler.sh status
+bash ~/IWE/FMT-exocortex-template/roles/synchronizer/scripts/scheduler.sh status
 ```
 
 </details>
@@ -667,7 +681,7 @@ Claude выполняет задачу. На каждом рубеже (подз
 
 В терминале:
 ```bash
-cd ~/IWE/DS-exocortex
+cd ~/IWE/FMT-exocortex-template
 bash update.sh
 ```
 
@@ -772,7 +786,7 @@ IWE работает преимущественно локально. Вот ч�
 Pack — это предметная база знаний. Создаётся позже, когда накопишь достаточно captures. Первый шаг — работа с `captures.md` через Экстрактор.
 
 **Как проверить MCP?**
-Открой Claude Code в папке экзокортекса и набери `/mcp` — серверы должны быть Connected. Попроси: «Найди документы про принципы». Если серверов нет — добавь их через https://claude.ai/settings/connectors (см. шаг 1.3b).
+`/mcp` в Claude Code -- серверы должны быть Connected. Попроси: «Найди документы про принципы». Не работает? Запусти `bash FMT-exocortex-template/setup.sh --validate` -- покажет что именно сломано. Подробности -- см. шаг 1.3b.
 
 **Безопасны ли мои данные?**
 DS-strategy — приватный репо. MEMORY.md — локальный файл. Ничего не публикуется без твоего ведома. Подробности о том, что отправляется на внешние серверы (Claude API, WakaTime, GitHub) — см. раздел [Безопасность и приватность](#безопасность-и-приватность).
@@ -794,7 +808,7 @@ rm -rf ~/.claude/projects/*/memory/
 rm -rf ~/.local/state/exocortex/
 
 # Репозитории (по желанию)
-rm -rf ~/IWE/DS-exocortex
+rm -rf ~/IWE/FMT-exocortex-template
 rm -rf ~/IWE/DS-strategy
 ```
 
@@ -832,6 +846,6 @@ rm -rf ~/IWE/DS-strategy
 | `DP.ROLE.001` | Полный реестр ИИ-ролей (21 роль) |
 
 > **Нужна помощь?** Спроси бота @aist_me_bot — он ищет по базе знаний платформы (Pack).
-> **Техническая проблема?** Открой issue: [github.com/aisystant/DS-exocortex/issues](https://github.com/TserenTserenov/DS-exocortex/issues)
+> **Техническая проблема?** Открой issue: [github.com/aisystant/FMT-exocortex-template/issues](https://github.com/TserenTserenov/FMT-exocortex-template/issues)
 
 </details>

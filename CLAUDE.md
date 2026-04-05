@@ -63,7 +63,12 @@
 | Документ/чеклист | `memory/checklists.md` |
 
 Политика: ≤11 файлов. Справочники ≤100 строк. Протоколы ≤150. MEMORY.md ≤100 строк.
+<<<<<<< /tmp/tmp.rpG0ZpZhsR/claude-merge.md
 Рабочая директория: `/home/sviridov/IWE/` (не из sub-директорий). `/home/sviridov/IWE/memory/` = симлинк на auto-memory.
+=======
+Temporal metadata: `valid_from: YYYY-MM-DD` (обязательно при создании), `superseded_by: <файл>` (при устаревании). Подробности → `protocol-work.md § 2`.
+Рабочая директория: `/home/sviridov/IWE/` (не из sub-директорий). `/home/sviridov/IWE/memory/` = симлинк на auto-memory.
+>>>>>>> /tmp/tmp.rpG0ZpZhsR/files/CLAUDE.md
 
 ## 5. АрхГейт — ОБЯЗАТЕЛЬНАЯ оценка
 
@@ -124,7 +129,11 @@
 ### Именование
 
 - `DS-strategy` (не `DS-strategy`) — личный governance-хаб
+<<<<<<< /tmp/tmp.rpG0ZpZhsR/claude-merge.md
 - `/home/sviridov/IWE/` — рабочая директория
+=======
+- `/home/sviridov/IWE/` — рабочая директория
+>>>>>>> /tmp/tmp.rpG0ZpZhsR/files/CLAUDE.md
 
 ### Read-only репо
 
@@ -134,8 +143,13 @@
 ### Extensions Gate (БЛОКИРУЮЩЕЕ)
 
 **Кастомизация протоколов/скиллов → ТОЛЬКО в `extensions/*.md`.**
+<<<<<<< /tmp/tmp.rpG0ZpZhsR/claude-merge.md
 Прямое редактирование `.claude/skills/` или `memory/protocol-*.md` = ошибка: сотрётся при `update.sh`.
 Авторское → `extensions/`. Платформенное → `DS-exocortex`, затем `update.sh`.
+=======
+Прямое редактирование `.claude/skills/` или `memory/protocol-*.md` = ошибка.
+**Архитектурное обоснование:** платформенные файлы (L1) и пользовательские расширения (L3) -- разные слои. Смешение слоёв = хрупкость при обновлении (3-way merge не может отличить платформенное от пользовательского внутри одного файла). Разделение: платформенное → `FMT-exocortex-template` → `update.sh`. Пользовательское → `extensions/` + `params.yaml`.
+>>>>>>> /tmp/tmp.rpG0ZpZhsR/files/CLAUDE.md
 
 
 ### README.md (DS-exocortex)

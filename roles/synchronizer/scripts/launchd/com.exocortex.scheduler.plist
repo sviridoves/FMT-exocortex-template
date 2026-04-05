@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/home/sviridov/IWE/DS-exocortex/roles/synchronizer/scripts/scheduler.sh</string>
+        <string>/home/sviridov/IWE/FMT-exocortex-template/roles/synchronizer/scripts/scheduler.sh</string>
         <string>dispatch</string>
     </array>
 

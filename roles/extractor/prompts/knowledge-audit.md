@@ -15,7 +15,7 @@
 ## Конфигурация
 
 > Перед обработкой прочитай:
-> 1. `/home/sviridov/IWE/DS-exocortex/roles/extractor/config/routing.md` — таблицы маршрутизации
+> 1. `/home/sviridov/IWE/FMT-exocortex-template/roles/extractor/config/routing.md` — таблицы маршрутизации
 
 ## Алгоритм
 
