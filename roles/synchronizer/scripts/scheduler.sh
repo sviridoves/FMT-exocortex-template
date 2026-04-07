@@ -153,7 +153,11 @@ pre_archive_dayplan() {
     done
 
     if [ "$moved" -gt 0 ]; then
-        git -C "$strategy_dir" pull --rebase 2>/dev/null || true
+        # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
+        if ! git -C "$strategy_dir" pull 2>/dev/null; then
+            # Если обычный pull не работает, пробуем rebase
+            git -C "$strategy_dir" pull --rebase 2>/dev/null || true
+        fi
         # ВАЖНО: добавляем ТОЛЬКО перемещённые файлы, не всю директорию.
         # `git add current/` может подхватить грязные unstaged файлы (баг 21 мар 2026).
         git -C "$strategy_dir" add -- archive/day-plans/ 2>/dev/null || true

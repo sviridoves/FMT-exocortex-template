@@ -269,7 +269,20 @@ else
     local stash_count_before stash_count_after
     stash_count_before=$(git stash list 2>/dev/null | wc -l)
     git stash -u --quiet 2>/dev/null || true
-    git pull --rebase --quiet 2>/dev/null || log "WARN: pull --rebase failed (offline?)"
+    # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
+    if ! git pull --quiet 2>/dev/null; then
+        # Если обычный pull не работает, пробуем rebase
+        if ! git pull --rebase --quiet 2>/dev/null; then
+            log "WARN: pull --rebase failed (offline? conflict?)"
+            # В случае ошибки, восстанавливаем stashed изменения
+            stash_count_after=$(git stash list 2>/dev/null | wc -l)
+            if [ "$stash_count_after" -gt "$stash_count_before" ]; then
+                git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"
+            fi
+            # Продолжаем выполнение, даже если pull не удался
+            git reset --quiet 2>/dev/null || true
+        fi
+    fi
     stash_count_after=$(git stash list 2>/dev/null | wc -l)
     if [ "$stash_count_after" -gt "$stash_count_before" ]; then
         git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"

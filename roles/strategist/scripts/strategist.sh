@@ -98,8 +98,7 @@ ${prompt}"
 
     # Запуск Claude Code с содержимым команды как промпт (с timeout-защитой)
     local rc=0
-    timeout "$CLAUDE_TIMEOUT" "$CLAUDE_PATH" --dangerously-skip-permissions \
-        --allowedTools "Read,Write,Edit,Glob,Grep,Bash" \
+    timeout "$CLAUDE_TIMEOUT" "$CLAUDE_PATH" task --yolo \
         -p "$prompt" \
         >> "$LOG_FILE" 2>&1 || rc=$?
 
@@ -115,7 +114,13 @@ ${prompt}"
     if git -C "$WORKSPACE" diff --quiet origin/main..HEAD 2>/dev/null; then
         log "No unpushed commits"
     else
-        git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Pulled (rebase)" || log "WARN: pull --rebase failed"
+        # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
+        if ! git -C "$WORKSPACE" pull >> "$LOG_FILE" 2>&1; then
+            # Если обычный pull не работает, пробуем rebase
+            git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Pulled (rebase)" || log "WARN: pull --rebase failed"
+        else
+            log "Pulled (merge)"
+        fi
         git -C "$WORKSPACE" push >> "$LOG_FILE" 2>&1 && log "Pushed to GitHub" || log "WARN: git push failed"
     fi
 
@@ -265,7 +270,13 @@ case "$1" in
         if ! git -C "$WORKSPACE" diff --quiet -- inbox/fleeting-notes.md archive/notes/Notes-Archive.md 2>/dev/null; then
             git -C "$WORKSPACE" add inbox/fleeting-notes.md archive/notes/Notes-Archive.md
             git -C "$WORKSPACE" commit -m "chore: auto-cleanup processed notes from fleeting-notes.md" >> "$LOG_FILE" 2>&1 || true
-            git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Cleanup: pulled (rebase)" || log "WARN: cleanup pull --rebase failed"
+             # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
+             if ! git -C "$WORKSPACE" pull >> "$LOG_FILE" 2>&1; then
+                 # Если обычный pull не работает, пробуем rebase
+                 git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Cleanup: pulled (rebase)" || log "WARN: cleanup pull --rebase failed"
+             else
+                 log "Cleanup: pulled (merge)"
+             fi
             git -C "$WORKSPACE" push >> "$LOG_FILE" 2>&1 && log "Cleanup: pushed" || log "WARN: cleanup push failed"
         else
             log "Cleanup: no changes to commit"

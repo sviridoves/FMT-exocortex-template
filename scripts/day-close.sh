@@ -24,6 +24,8 @@ SELECTIVE_REINDEX="$WORKSPACE_DIR/DS-MCP/knowledge-mcp/scripts/selective-reindex
 # LINEAR_SYNC="$WORKSPACE_DIR/roles/synchronizer/scripts/linear-sync.sh"
 LINEAR_SYNC=""
 LOG_FILE="$WORKSPACE_DIR/DS-agent-workspace/scheduler/day-close.log"
+LOCK_NAME="day-close-operation"
+LOCK_TIMEOUT=1800  # 30 минут
 # === /КОНФИГУРАЦИЯ ===
 
 # Цвета
@@ -36,23 +38,56 @@ log() { echo -e "${GREEN}[day-close]${NC} $1"; }
 warn() { echo -e "${YELLOW}[day-close]${NC} $1"; }
 err() { echo -e "${RED}[day-close]${NC} $1" >&2; }
 
+# Подключаем утилиты блокировки
+LOCK_UTILS="$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+if [ -f "$LOCK_UTILS" ]; then
+    source "$LOCK_UTILS"
+else
+    warn "Утилиты блокировки не найдены: $LOCK_UTILS"
+    warn "Продолжаем без механизма блокировки"
+fi
+
 # --- Шаг 1: Backup memory/ + CLAUDE.md → exocortex/ ---
 do_backup() {
   log "Шаг 1/3: Backup memory/ → exocortex/"
 
-  if [ ! -d "$MEMORY_SRC" ]; then
-    err "Memory source not found: $MEMORY_SRC"
-    return 1
+  # Проверяем несколько возможных местоположений директории памяти
+  local memory_found=false
+  local possible_paths=(
+    "$HOME/.claude/projects/-Users-$(whoami)-IWE/memory"
+    "$WORKSPACE_DIR/memory"
+    "$WORKSPACE_DIR/DS-exocortex/memory"
+    "$WORKSPACE_DIR/DS-exocortex/exocortex"
+    "$WORKSPACE_DIR/DS-strategy/exocortex"
+  )
+  
+  local memory_src_path=""
+  for path in "${possible_paths[@]}"; do
+    if [ -d "$path" ]; then
+      memory_src_path="$path"
+      memory_found=true
+      log "Найдена директория памяти: $path"
+      break
+    fi
+  done
+  
+  if [ "$memory_found" = false ]; then
+    warn "Директория памяти не найдена, создаем: $MEMORY_SRC"
+    mkdir -p "$MEMORY_SRC"
+    memory_src_path="$MEMORY_SRC"
+    memory_found=true
   fi
 
   mkdir -p "$EXOCORTEX_DST"
 
   local count=0
-  for f in "$MEMORY_SRC"/*.md "$MEMORY_SRC"/*.yaml "$MEMORY_SRC"/*.yml; do
-    [ -f "$f" ] || continue
-    cp "$f" "$EXOCORTEX_DST/"
-    count=$((count + 1))
-  done
+  if [ -d "$memory_src_path" ]; then
+    for f in "$memory_src_path"/*.md "$memory_src_path"/*.yaml "$memory_src_path"/*.yml; do
+      [ -f "$f" ] || continue
+      cp "$f" "$EXOCORTEX_DST/"
+      count=$((count + 1))
+    done
+  fi
 
   if [ -f "$WORKSPACE_DIR/CLAUDE.md" ]; then
     cp "$WORKSPACE_DIR/CLAUDE.md" "$EXOCORTEX_DST/CLAUDE.md"
@@ -141,6 +176,22 @@ main() {
     run_backup=true
     run_reindex=true
     run_linear=true
+  fi
+
+  # Проверяем, занята ли блокировка планировщиком
+  if [ -f "$LOCK_UTILS" ] && is_locked "scheduler-operation"; then
+    log "Планировщик занят, откладываем выполнение Day Close"
+    exit 0
+  fi
+
+  # Пытаемся получить блокировку для выполнения
+  if [ -f "$LOCK_UTILS" ]; then
+    if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
+      log "Не удалось получить блокировку, возможно другой процесс уже работает"
+      exit 0
+    fi
+    # Завершение работы - освобождение блокировки
+    trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
   fi
 
   log "=== Day Close (автоматические шаги) ==="
