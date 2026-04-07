@@ -70,7 +70,8 @@ check_ran_week() {
 check_interval() {
     local marker="$1-last"
     if [ -f "$STATE_DIR/$marker" ]; then
-        local ts ago
+        local ts
+        local ago
         ts=$(cat "$STATE_DIR/$marker")
         ago=$(( $(date +%s) - ts ))
         echo "${ago} сек назад"
@@ -132,7 +133,10 @@ agent: Синхронизатор
 
 "
 
-    local tl_result tl_emoji tl_label tl_issues
+    local tl_result
+    local tl_emoji
+    local tl_label
+    local tl_issues
     tl_result=$(compute_traffic_light)
     tl_emoji=$(echo "$tl_result" | cut -d'|' -f1)
     tl_label=$(echo "$tl_result" | cut -d'|' -f2)
@@ -266,8 +270,8 @@ else
     cd "$COMMIT_DIR"
     # Staging Isolation: stash → pull → pop → reset → add only own files
     # Without stash, pull --rebase fails when Claude sessions leave unstaged changes
-    local stash_count_before stash_count_after
     stash_count_before=$(git stash list 2>/dev/null | wc -l)
+    stash_count_after=$(git stash list 2>/dev/null | wc -l)
     git stash -u --quiet 2>/dev/null || true
     # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
     if ! git pull --quiet 2>/dev/null; then
