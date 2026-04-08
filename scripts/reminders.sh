@@ -3,12 +3,19 @@
 
 set -euo pipefail
 
-# === КОНФИГУРАЦИЯ ===
-WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
-DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
-REMINDERS_LOG="$WORKSPACE_DIR/DS-agent-workspace/scheduler/reminders.log"
-TELEGRAM_ENABLED=$(grep -q "telegram_notifications: true" "$WORKSPACE_DIR/DS-exocortex/params.yaml" && echo "true" || echo "false")
-# === /КОНФИГУРАЦИЯ ===
+  # === КОНФИГУРАЦИЯ ===
+  WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
+  DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
+  REMINDERS_LOG="$WORKSPACE_DIR/DS-agent-workspace/scheduler/reminders.log"
+  TELEGRAM_ENABLED=$(grep -q "telegram_notifications: true" "$WORKSPACE_DIR/DS-exocortex/params.yaml" && echo "true" || echo "false")
+  # === /КОНФИГУРАЦИЯ ===
+
+  # Подключаем утилиты блокировок
+  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+
+  # Конфигурация блокировок
+  LOCK_NAME="reminders"
+  LOCK_TIMEOUT=1800  # 30 минут
 
 # Цвета
 GREEN='\033[0;32m'
@@ -124,7 +131,7 @@ run_reminders_check() {
   
   # Проверяем необходимость Day Close
   if check_day_close_needed; then
-    send_reminder "DAY_CLOSE" "⚠️ Необходимо выполнить Day Close за сегодня ($TODAY)"
+    send_reminder "DAY_CLOSE" "⚠️ Необходимо выполнить Day Close за сегодня ($(date +%Y-%m-%d))"
   fi
   
   # Проверяем незавершенные задачи
@@ -192,20 +199,18 @@ check_day_close_checklist() {
 # --- Main ---
 main() {
   # Проверяем, занята ли блокировка планировщиком
-  if [ -f "$LOCK_UTILS" ] && is_locked "scheduler-operation"; then
+  if is_locked "scheduler-operation"; then
     log "Планировщик занят, откладываем выполнение проверки напоминаний"
     exit 0
   fi
 
   # Пытаемся получить блокировку для выполнения
-  if [ -f "$LOCK_UTILS" ]; then
-    if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
-      log "Не удалось получить блокировку, возможно другой процесс уже работает"
-      exit 0
-    fi
-    # Завершение работы - освобождение блокировки
-    trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
+  if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
+    log "Не удалось получить блокировку, возможно другой процесс уже работает"
+    exit 0
   fi
+  # Завершение работы - освобождение блокировки
+  trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
 
   local action="${1:-check}"
 

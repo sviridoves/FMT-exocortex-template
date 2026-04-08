@@ -3,15 +3,22 @@
 
 set -euo pipefail
 
-# === КОНФИГУРАЦИЯ ===
-WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
-DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
-LOGS_DIR="$WORKSPACE_DIR/DS-agent-workspace/scheduler/logs"
-MAIN_LOG="$LOGS_DIR/day-close-enhanced.log"
-ERROR_LOG="$LOGS_DIR/day-close-errors.log"
-METRICS_LOG="$LOGS_DIR/day-close-metrics.log"
-DAILY_SUMMARY="$LOGS_DIR/daily-summary-$(date +%Y-%m-%d).log"
-# === /КОНФИГУРАЦИЯ ===
+  # === КОНФИГУРАЦИЯ ===
+  WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
+  DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
+  LOGS_DIR="$WORKSPACE_DIR/DS-agent-workspace/scheduler/logs"
+  MAIN_LOG="$LOGS_DIR/day-close-enhanced.log"
+  ERROR_LOG="$LOGS_DIR/day-close-errors.log"
+  METRICS_LOG="$LOGS_DIR/day-close-metrics.log"
+  DAILY_SUMMARY="$LOGS_DIR/daily-summary-$(date +%Y-%m-%d).log"
+  # === /КОНФИГУРАЦИЯ ===
+
+  # Подключаем утилиты блокировок
+  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+
+  # Конфигурация блокировок
+  LOCK_NAME="enhanced-logging"
+  LOCK_TIMEOUT=1800  # 30 минут
 
 # Создаем директорию для логов если не существует
 mkdir -p "$LOGS_DIR"
@@ -227,20 +234,18 @@ generate_performance_report() {
 # --- Main ---
 main() {
   # Проверяем, занята ли блокировка планировщиком
-  if [ -f "$LOCK_UTILS" ] && is_locked "scheduler-operation"; then
+  if is_locked "scheduler-operation"; then
     log "Планировщик занят, откладываем выполнение логирования"
     exit 0
   fi
 
   # Пытаемся получить блокировку для выполнения
-  if [ -f "$LOCK_UTILS" ]; then
-    if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
-      log "Не удалось получить блокировку, возможно другой процесс уже работает"
-      exit 0
-    fi
-    # Завершение работы - освобождение блокировки
-    trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
+  if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
+    log "Не удалось получить блокировку, возможно другой процесс уже работает"
+    exit 0
   fi
+  # Завершение работы - освобождение блокировки
+  trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
 
   local action="${1:-all}"
 

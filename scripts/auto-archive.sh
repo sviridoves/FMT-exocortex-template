@@ -3,13 +3,20 @@
 
 set -euo pipefail
 
-# === КОНФИГУРАЦИЯ ===
-WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
-DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
-ARCHIVE_DIR="$DS_STRATEGY/archive/wp-contexts"
-INBOX_DIR="$DS_STRATEGY/inbox"
-LOG_FILE="$WORKSPACE_DIR/DS-agent-workspace/scheduler/auto-archive.log"
-# === /КОНФИГУРАЦИЯ ===
+  # === КОНФИГУРАЦИЯ ===
+  WORKSPACE_DIR="${WORKSPACE_DIR:-$HOME/IWE}"
+  DS_STRATEGY="$WORKSPACE_DIR/DS-strategy"
+  ARCHIVE_DIR="$DS_STRATEGY/archive/wp-contexts"
+  INBOX_DIR="$DS_STRATEGY/inbox"
+  LOG_FILE="$WORKSPACE_DIR/DS-agent-workspace/scheduler/auto-archive.log"
+  # === /КОНФИГУРАЦИЯ ===
+
+  # Подключаем утилиты блокировок
+  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+
+  # Конфигурация блокировок
+  LOCK_NAME="auto-archive"
+  LOCK_TIMEOUT=1800  # 30 минут
 
 # Цвета
 GREEN='\033[0;32m'
@@ -177,20 +184,18 @@ write_log() {
 # --- Main ---
 main() {
   # Проверяем, занята ли блокировка планировщиком
-  if [ -f "$LOCK_UTILS" ] && is_locked "scheduler-operation"; then
+  if is_locked "scheduler-operation"; then
     log "Планировщик занят, откладываем выполнение архивации"
     exit 0
   fi
 
   # Пытаемся получить блокировку для выполнения
-  if [ -f "$LOCK_UTILS" ]; then
-    if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
-      log "Не удалось получить блокировку, возможно другой процесс уже работает"
-      exit 0
-    fi
-    # Завершение работы - освобождение блокировки
-    trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
+  if ! acquire_lock "$LOCK_NAME" "$LOCK_TIMEOUT"; then
+    log "Не удалось получить блокировку, возможно другой процесс уже работает"
+    exit 0
   fi
+  # Завершение работы - освобождение блокировки
+  trap 'release_lock "$LOCK_NAME"; log "Блокировка освобождена"' EXIT
 
   log "=== Автоматическая архивация ==="
 

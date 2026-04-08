@@ -271,24 +271,23 @@ else
     # Staging Isolation: stash → pull → pop → reset → add only own files
     # Without stash, pull --rebase fails when Claude sessions leave unstaged changes
     stash_count_before=$(git stash list 2>/dev/null | wc -l)
-    stash_count_after=$(git stash list 2>/dev/null | wc -l)
     git stash -u --quiet 2>/dev/null || true
+    current_stash_count=$(git stash list 2>/dev/null | wc -l)
     # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
     if ! git pull --quiet 2>/dev/null; then
         # Если обычный pull не работает, пробуем rebase
         if ! git pull --rebase --quiet 2>/dev/null; then
             log "WARN: pull --rebase failed (offline? conflict?)"
             # В случае ошибки, восстанавливаем stashed изменения
-            stash_count_after=$(git stash list 2>/dev/null | wc -l)
-            if [ "$stash_count_after" -gt "$stash_count_before" ]; then
+            if [ "$current_stash_count" -gt "$stash_count_before" ]; then
                 git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"
             fi
             # Продолжаем выполнение, даже если pull не удался
             git reset --quiet 2>/dev/null || true
         fi
     fi
-    stash_count_after=$(git stash list 2>/dev/null | wc -l)
-    if [ "$stash_count_after" -gt "$stash_count_before" ]; then
+    current_stash_count=$(git stash list 2>/dev/null | wc -l)
+    if [ "$current_stash_count" -gt "$stash_count_before" ]; then
         git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"
     fi
     git reset --quiet 2>/dev/null || true
@@ -300,9 +299,15 @@ else
     done
 
     if ! git diff --cached --quiet 2>/dev/null; then
-        git commit -m "auto: scheduler report $DATE" --quiet
-        git push --quiet 2>/dev/null || log "WARN: push failed"
-        log "Committed and pushed"
+        if git commit -m "auto: scheduler report $DATE" --quiet; then
+            if git push --quiet 2>/dev/null; then
+                log "Committed and pushed"
+            else
+                log "WARN: push failed"
+            fi
+        else
+            log "WARN: commit failed"
+        fi
     else
         log "No changes to commit"
     fi

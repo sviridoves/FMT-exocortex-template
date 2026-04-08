@@ -98,4 +98,81 @@ else
     log_to_file "Нет коммитов за сегодня, пропускаем выполнение процедур Day Close"
 fi
 
+# === Автоматическая синхронизация изменений в репозитории ===
+log_to_file "=== Начало автоматической синхронизации изменений ==="
+
+sync_repositories() {
+    local success_count=0
+    local total_count=0
+    
+    # Синхронизируем все DS-* репозитории
+    for repo in "$WORKSPACE_DIR"/DS-*; do
+        if [ -d "$repo/.git" ]; then
+            total_count=$((total_count + 1))
+            local repo_name=$(basename "$repo")
+            
+            log_to_file "Синхронизация репозитория: $repo_name"
+            
+            cd "$repo"
+            
+            # Сохраняем текущее состояние на случай конфликта
+            local stash_count_before=$(git stash list 2>/dev/null | wc -l)
+            git stash -u --quiet 2>/dev/null || true
+            local current_stash_count=$(git stash list 2>/dev/null | wc -l)
+            
+            # Пытаемся обновить локальный репозиторий
+            if ! git pull --quiet 2>/dev/null; then
+                if ! git pull --rebase --quiet 2>/dev/null; then
+                    log_to_file "WARN: pull failed for $repo_name (offline? conflict?)"
+                    # Восстанавливаем изменения при ошибке
+                    if [ "$current_stash_count" -gt "$stash_count_before" ]; then
+                        git stash pop --quiet 2>/dev/null || log_to_file "WARN: stash pop failed for $repo_name"
+                    fi
+                    continue
+                fi
+            fi
+            
+            # Восстанавливаем изменения из стэша
+            local current_stash_count_after=$(git stash list 2>/dev/null | wc -l)
+            if [ "$current_stash_count_after" -gt "$stash_count_before" ]; then
+                git stash pop --quiet 2>/dev/null || log_to_file "WARN: stash pop failed for $repo_name"
+            fi
+            
+            # Сбрасываем индекс и добавляем только наши изменения
+            git reset --quiet 2>/dev/null || true
+            
+            # Добавляем все изменения
+            git add -A 2>/dev/null || true
+            
+            # Проверяем, есть ли изменения для коммита
+            if ! git diff --cached --quiet 2>/dev/null; then
+                # Делаем коммит с автоматическим сообщением
+                if git commit -m "auto: night-sync $(date +%Y-%m-%d) - day close procedures" --quiet 2>/dev/null; then
+                    log_to_file "✓ Changes committed in $repo_name"
+                    
+                    # Пытаемся запушить изменения
+                    if git push --quiet 2>/dev/null; then
+                        log_to_file "✓ Changes pushed to $repo_name"
+                        success_count=$((success_count + 1))
+                    else
+                        log_to_file "✗ Push failed for $repo_name (offline? permission denied?)"
+                    fi
+                else
+                    log_to_file "✗ Commit failed for $repo_name (no changes or conflict?)"
+                fi
+            else
+                log_to_file "• No changes to commit in $repo_name"
+                success_count=$((success_count + 1))  # Считаем как успех если нет изменений
+            fi
+        fi
+    done
+    
+    log_to_file "Синхронизация завершена: $success_count/$total_count репозиториев успешно синхронизировано"
+}
+
+# Выполняем синхронизацию только если были операции
+if [ "$HAS_COMMITS_TODAY" = true ]; then
+    sync_repositories
+fi
+
 log_to_file "=== Завершение автоматического выполнения Day Close скриптов ==="
