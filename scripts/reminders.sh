@@ -10,8 +10,11 @@ set -euo pipefail
   TELEGRAM_ENABLED=$(grep -q "telegram_notifications: true" "$WORKSPACE_DIR/DS-exocortex/params.yaml" && echo "true" || echo "false")
   # === /КОНФИГУРАЦИЯ ===
 
-  # Подключаем утилиты блокировок
-  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+   # Подключаем утилиты блокировок
+   source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh" || {
+     echo "Ошибка: не удалось подключить locking-utils.sh"
+     exit 1
+   }
 
   # Конфигурация блокировок
   LOCK_NAME="reminders"

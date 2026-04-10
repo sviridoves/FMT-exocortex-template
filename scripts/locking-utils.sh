@@ -3,8 +3,14 @@
 
 set -euo pipefail
 
-LOCK_DIR="/tmp/iwe-locks"
+LOCK_DIR="${LOCK_DIR:-/tmp/iwe-locks}"
 mkdir -p "$LOCK_DIR"
+
+# Проверяем доступность директории для записи
+if [ ! -w "$LOCK_DIR" ]; then
+    echo "Ошибка: директория блокировок недоступна для записи: $LOCK_DIR" >&2
+    exit 1
+fi
 
 # Функция получения блокировки
 acquire_lock() {

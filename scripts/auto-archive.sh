@@ -11,8 +11,11 @@ set -euo pipefail
   LOG_FILE="$WORKSPACE_DIR/DS-agent-workspace/scheduler/auto-archive.log"
   # === /КОНФИГУРАЦИЯ ===
 
-  # Подключаем утилиты блокировок
-  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+   # Подключаем утилиты блокировок
+   source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh" || {
+     echo "Ошибка: не удалось подключить locking-utils.sh"
+     exit 1
+   }
 
   # Конфигурация блокировок
   LOCK_NAME="auto-archive"
@@ -73,10 +76,15 @@ archive_completed_wp_contexts() {
 is_wp_completed() {
   local wp_file="$1"
   
-  # Проверяем различные признаки завершения РП
-  if grep -q "done\|заверш\|completed\|готов\|finished\|закрыт\|closed" "$wp_file"; then
-    return 0
-  fi
+   # Проверяем различные признаки завершения РП
+   if grep -q "done\|заверш\|completed\|готов\|finished\|закрыт\|closed" "$wp_file"; then
+     return 0
+   fi
+   
+   # Проверяем YAML frontmatter на статус done
+   if grep -q "^status:.*done" "$wp_file"; then
+     return 0
+   fi
   
   # Проверяем наличие специфичных строк, указывающих на завершение
   if grep -q "✅\|✓\|Готово\|Завершено\|Complete\|Done\|Closed" "$wp_file"; then
@@ -144,8 +152,8 @@ cleanup_memory_md() {
       echo "$line" >> "$temp_file"
     # Внутри секции РП - проверяем строки с РП
     elif [ "$in_wp_section" = true ] && [[ "$line" =~ ^\|\ [0-9]+.*\| ]]; then
-      # Проверяем, содержит ли строка статус done
-      if [[ "$line" =~ \|.*done.*\| ]] || [[ "$line" =~ \|.*✅.*\| ]] || [[ "$line" =~ \|.*closed.*\| ]]; then
+  # Проверяем, содержит ли строка статус done
+  if [[ "$line" =~ \|.*done.*\| ]] || [[ "$line" =~ \|.*✅.*\| ]] || [[ "$line" =~ \|.*closed.*\| ]]; then
         # Пропускаем строку (не добавляем в новый файл)
         removed_count=$((removed_count + 1))
         log "  Удален завершенный РП из MEMORY.md: $(echo "$line" | cut -d'|' -f3 | xargs)"

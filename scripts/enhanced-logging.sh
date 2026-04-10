@@ -13,8 +13,11 @@ set -euo pipefail
   DAILY_SUMMARY="$LOGS_DIR/daily-summary-$(date +%Y-%m-%d).log"
   # === /КОНФИГУРАЦИЯ ===
 
-  # Подключаем утилиты блокировок
-  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+   # Подключаем утилиты блокировок
+   source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh" || {
+     echo "Ошибка: не удалось подключить locking-utils.sh"
+     exit 1
+   }
 
   # Конфигурация блокировок
   LOCK_NAME="enhanced-logging"

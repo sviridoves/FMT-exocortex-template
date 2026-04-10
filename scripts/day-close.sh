@@ -41,10 +41,13 @@ err() { echo -e "${RED}[day-close]${NC} $1" >&2; }
 # Подключаем утилиты блокировки
 LOCK_UTILS="$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
 if [ -f "$LOCK_UTILS" ]; then
-    source "$LOCK_UTILS"
+    source "$LOCK_UTILS" || {
+        echo "Ошибка: не удалось подключить locking-utils.sh"
+        exit 1
+    }
 else
-    warn "Утилиты блокировки не найдены: $LOCK_UTILS"
-    warn "Продолжаем без механизма блокировки"
+    echo "Ошибка: файл утилит блокировки не найден: $LOCK_UTILS"
+    exit 1
 fi
 
 # --- Шаг 1: Backup memory/ + CLAUDE.md → exocortex/ ---

@@ -9,8 +9,11 @@ set -euo pipefail
   LOG_FILE="$WORKSPACE_DIR/DS-agent-workspace/scheduler/status-update.log"
   # === /КОНФИГУРАЦИЯ ===
 
-  # Подключаем утилиты блокировок
-  source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh"
+   # Подключаем утилиты блокировок
+   source "$WORKSPACE_DIR/DS-exocortex/scripts/locking-utils.sh" || {
+     echo "Ошибка: не удалось подключить locking-utils.sh"
+     exit 1
+   }
 
   # Конфигурация блокировок
   LOCK_NAME="status-update"
