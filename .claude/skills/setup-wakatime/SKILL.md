@@ -57,7 +57,7 @@ cp .claude/hooks/wakatime-heartbeat.sh ~/.claude/hooks/wakatime-heartbeat.sh
 chmod +x ~/.claude/hooks/wakatime-heartbeat.sh
 ```
 
-### Шаг 5: Настройка хуков в settings.json
+### Шаг 4: Настройка хуков в settings.json
 
 Прочитай `~/.claude/settings.json`. Добавь в секцию `hooks` (не затирая существующие хуки):
 

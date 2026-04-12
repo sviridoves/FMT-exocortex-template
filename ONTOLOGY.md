@@ -1,8 +1,8 @@
 # Онтология: Экзокортекс-шаблон IWE
 
-> Downstream-онтология по SPF.SPEC.002 §5.3.
+> Downstream-онтология по SPF.SPEC.002 §4.3.
 > Ссылается на понятия Pack DP (Digital Platform) и SPF. Собственные понятия не вводит — только реализационные.
-> **§1-5: Platform-space** (обновляется через `update.sh`). **§5-6: User-space** (только локально).
+> **§1-4: Platform-space** (обновляется через `update.sh`). **§5-6: User-space** (только локально).
 
 ---
 
@@ -26,9 +26,9 @@
 | Platform-space | Platform-space | DP.D.011 | Файлы, обновляемые через update.sh (CLAUDE.md, memory/*.md) |
 | User-space | User-space | DP.D.011 | Файлы пользователя (MEMORY.md, DS-strategy/, личные планы) |
 | Экстракция знаний | Knowledge Extraction | DP.M.001 | Метод Capture-to-Pack в протоколе работы |
-| Адаптивная персонализация | Adaptive Personalization | DP.M.005 | MCP ddt — цифровой двойник ученика |
+| Адаптивная персонализация | Adaptive Personalization | DP.M.004 | MCP ddt — цифровой двойник ученика |
 | Цифровой двойник | Digital Twin | DP.CONCEPT.001 | MCP ddt — метамодель, цели, самооценка |
-| Навигация знаний | Knowledge Navigation | DP.NAV.001 | MCP knowledge-mcp — hybrid search по Pack и guides |
+| Навигация знаний | Knowledge Navigation | DP.NAV.001 | Gateway iwe-knowledge (mcp.aisystant.com/mcp) — hybrid search по Pack и guides |
 | IPO-паттерн | IPO Pattern | DP.ARCH.001 | Контракт описания компонентов в CLAUDE.md |
 | Архитектурная характеристика | Architectural Characteristic | DP.D.010 | АрхГейт (ЭМОГССБ) в CLAUDE.md §5 |
 | Файл контекста РП | WP Context File | DP.EXOCORTEX.001 | inbox/WP-*.md в DS-strategy |
@@ -45,7 +45,7 @@
 | Термин (RU) | Term (EN) | Определение | Pack-понятие |
 |-------------|-----------|-------------|-------------|
 | Слой памяти | Memory Layer | Уровень хранения инструкций экзокортекса (Layer 1: MEMORY.md, Layer 2: CLAUDE.md, Layer 3: memory/*.md) | DP.EXOCORTEX.001 |
-| Контур системы | Platform Contour | Уровень вложенности IWE (L1 Ecosystem → L2 Platform → L3 Template → L5 Personal) | DP.ARCH.001 |
+| Контур системы | Platform Contour | Уровень вложенности IWE (L1 Ecosystem → L2 Platform → L3 Template → L4 Personal) | DP.ARCH.001 |
 | Ритуал ОРЗ | ORZ Ritual | Реализация протокола сессии: Открытие → Работа → Закрытие | DP.M.003 |
 | WP Gate | WP Gate | Блокирующая проверка наличия РП в плане перед началом работы | DP.EXOCORTEX.001 |
 | Capture-to-Pack | Capture-to-Pack | Рубежная проверка: есть ли знание для записи в Pack | DP.M.001 |
@@ -54,14 +54,14 @@
 | Placeholder-переменная | Placeholder Variable | `{{VAR}}` — подставляется setup.sh при развёртывании шаблона | — (реализационное) |
 | Контракт роли | Role Contract | role.yaml + промпты + скрипты в roles/<name>/ | DP.ROLE.001 |
 | Hub-and-Spoke | Hub-and-Spoke | Паттерн координации: DS-strategy (хаб) ↔ WORKPLAN.md в каждом репо (споки) | DP.ROLE.012 |
-| Творческий конвейер | Creative Pipeline | 5 стадии превращения мысли в публикацию: заметка → черновик → заготовка → пост. Каждый артефакт обязан продвинуться или быть закрыт в пределах TTL | DP.M.003 |
+| Творческий конвейер | Creative Pipeline | 4 стадии превращения мысли в публикацию: заметка → черновик → заготовка → пост. Каждый артефакт обязан продвинуться или быть закрыт в пределах TTL | DP.M.003 |
 | Guard (страж) | Guard | Автоматическая проверка TTL-нарушений на стратегировании и Day Close | DP.EXOCORTEX.001 |
 | DayPlan | DayPlan | Дневной план — артефакт Day Open. Handoff Стратег→Человек | DP.M.003 |
 | WeekPlan | WeekPlan | Недельный план — артефакт стратегирования. Содержит РП, бюджеты, фокус | DP.M.003 |
 
 ---
 
-## 5. Аббревиатуры (Platform-space)
+## 4. Аббревиатуры (Platform-space)
 
 > Аббревиатуры, используемые в шаблоне. Наследованные из upstream отмечены уровнем.
 
@@ -117,7 +117,7 @@
 
 ## 6. Мои аббревиатуры
 
-> Аббревиатуры, специфичные для твоей работы. Платформенные — в §5 выше.
+> Аббревиатуры, специфичные для твоей работы. Платформенные — в §4 выше.
 
 | Аббревиатура | Расшифровка (RU) | Full form (EN) |
 |-------------|-----------------|----------------|
@@ -125,4 +125,4 @@
 
 ---
 
-_Downstream-онтология по SPF.SPEC.002 §5.3. Upstream: Pack DP (Digital Platform)_
+_Downstream-онтология по SPF.SPEC.002 §4.3. Upstream: Pack DP (Digital Platform)_

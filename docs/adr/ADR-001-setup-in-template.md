@@ -2,7 +2,7 @@
 
 **Статус:** Принято
 **Дата:** 2026-02-28
-**Контекст:** DS-exocortex, DS-ai-systems/setup
+**Контекст:** FMT-exocortex-template, DS-ai-systems/setup
 
 ---
 
@@ -13,7 +13,7 @@
 2. Перейти в `DS-ai-systems/setup/`
 3. Запустить `bash setup.sh`
 
-Обоснование: онтологическое разделение типов (FMT = Format, DS = instrument) и контуров (L2 Platform → L3 Template → L5 Personal).
+Обоснование: онтологическое разделение типов (FMT = Format, DS = instrument) и контуров (L2 Platform → L3 Template → L4 Personal).
 
 ## Проблема
 
@@ -30,13 +30,13 @@
 | Скорость | 7 | 8 |
 | Современность | 7 | 8 |
 | Безопасность | 8 | 8 |
-| **Среднее** | **6.5** | **8.3** |
+| **Среднее** | **6.4** | **8.3** |
 
 Текущее решение ниже порога 8. Генеративность (3) и Обучаемость (5) — критически низкие.
 
 ## Решение
 
-Перенести `setup.sh` в корень DS-exocortex (рядом с `update.sh`).
+Перенести `setup.sh` в корень FMT-exocortex-template (рядом с `update.sh`).
 
 **Что перенесено:**
 - `setup.sh` — модифицирован: авто-определение TEMPLATE_DIR, убран шаг форка (пользователь форкает сам)
@@ -48,8 +48,8 @@
 
 **Новый пользовательский flow:**
 ```bash
-gh repo fork TserenTserenov/DS-exocortex --clone
-cd DS-exocortex
+gh repo fork TserenTserenov/FMT-exocortex-template --clone
+cd FMT-exocortex-template
 bash setup.sh
 ```
 

@@ -70,8 +70,7 @@ check_ran_week() {
 check_interval() {
     local marker="$1-last"
     if [ -f "$STATE_DIR/$marker" ]; then
-        local ts
-        local ago
+        local ts ago
         ts=$(cat "$STATE_DIR/$marker")
         ago=$(( $(date +%s) - ts ))
         echo "${ago} сек назад"
@@ -133,10 +132,7 @@ agent: Синхронизатор
 
 "
 
-    local tl_result
-    local tl_emoji
-    local tl_label
-    local tl_issues
+    local tl_result tl_emoji tl_label tl_issues
     tl_result=$(compute_traffic_light)
     tl_emoji=$(echo "$tl_result" | cut -d'|' -f1)
     tl_label=$(echo "$tl_result" | cut -d'|' -f2)
@@ -188,15 +184,15 @@ agent: Синхронизатор
         fi
     fi
 
-    # 5. Week-review (Пн)
+    # 4. Week-review (Пн)
     if [ "$DOW" = "1" ]; then
         local wr_time
         if wr_time=$(check_ran_week "strategist-week-review"); then
             report+="
-| 5 | Обзор недели | **✅** | $wr_time |"
+| 4 | Обзор недели | **✅** | $wr_time |"
         else
             report+="
-| 5 | Обзор недели | **❌** | — |"
+| 4 | Обзор недели | **❌** | — |"
         fi
     fi
 
@@ -270,24 +266,13 @@ else
     cd "$COMMIT_DIR"
     # Staging Isolation: stash → pull → pop → reset → add only own files
     # Without stash, pull --rebase fails when Claude sessions leave unstaged changes
+    stash_count_before=""
+    stash_count_after=""
     stash_count_before=$(git stash list 2>/dev/null | wc -l)
     git stash -u --quiet 2>/dev/null || true
-    current_stash_count=$(git stash list 2>/dev/null | wc -l)
-    # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
-    if ! git pull --quiet 2>/dev/null; then
-        # Если обычный pull не работает, пробуем rebase
-        if ! git pull --rebase --quiet 2>/dev/null; then
-            log "WARN: pull --rebase failed (offline? conflict?)"
-            # В случае ошибки, восстанавливаем stashed изменения
-            if [ "$current_stash_count" -gt "$stash_count_before" ]; then
-                git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"
-            fi
-            # Продолжаем выполнение, даже если pull не удался
-            git reset --quiet 2>/dev/null || true
-        fi
-    fi
-    current_stash_count=$(git stash list 2>/dev/null | wc -l)
-    if [ "$current_stash_count" -gt "$stash_count_before" ]; then
+    git pull --rebase --quiet 2>/dev/null || log "WARN: pull --rebase failed (offline?)"
+    stash_count_after=$(git stash list 2>/dev/null | wc -l)
+    if [ "$stash_count_after" -gt "$stash_count_before" ]; then
         git stash pop --quiet 2>/dev/null || log "WARN: stash pop failed"
     fi
     git reset --quiet 2>/dev/null || true
@@ -299,15 +284,9 @@ else
     done
 
     if ! git diff --cached --quiet 2>/dev/null; then
-        if git commit -m "auto: scheduler report $DATE" --quiet; then
-            if git push --quiet 2>/dev/null; then
-                log "Committed and pushed"
-            else
-                log "WARN: push failed"
-            fi
-        else
-            log "WARN: commit failed"
-        fi
+        git commit -m "auto: scheduler report $DATE" --quiet
+        git push --quiet 2>/dev/null || log "WARN: push failed"
+        log "Committed and pushed"
     else
         log "No changes to commit"
     fi

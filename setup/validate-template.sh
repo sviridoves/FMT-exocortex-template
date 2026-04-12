@@ -1,16 +1,17 @@
 #!/bin/bash
-# Validate Template — проверка целостности DS-exocortex
+# Validate Template — проверка целостности FMT-exocortex-template
 #
-# 5 проверок:
+# 6 проверок:
 # 1. Нет автор-специфичного контента
 # 2. Нет захардкоженных путей /Users/
 # 3. Нет захардкоженных путей /opt/homebrew
-# 5. MEMORY.md — скелет (мало строк в РП-таблице)
+# 4. MEMORY.md — скелет (мало строк в РП-таблице)
 # 5. Обязательные файлы существуют
+# 6. Нет хардкод-путей к FMT-exocortex-template/scripts|roles в протоколах/скиллах (WP-219, DP.FM.009)
 
 set -euo pipefail
 
-TEMPLATE_DIR="${1:-$HOME/IWE/DS-exocortex}"
+TEMPLATE_DIR="${1:-$HOME/IWE/FMT-exocortex-template}"
 FAIL=0
 
 echo "=== Validating: $TEMPLATE_DIR ==="
@@ -25,18 +26,19 @@ grep_count() {
 # 1. Нет автор-специфичного контента
 echo -n "[1/5] Author-specific content... "
 CHECK1_FAIL=0
-for pattern in "tserentserenov" "PACK-MIM" "aist_bot_newarchitecture" "DS-Knowledge-Index-Tseren"; do
+for pattern in "tserentserenov" "PACK-MIM" "aist_bot_newarchitecture" "DS-Knowledge-Index-Tseren" "DS-IT-systems" "DS-ai-systems"; do
     # Исключаем: github.com URLs (публичные ссылки), validate-template.sh (содержит паттерны поиска)
     count=$(grep -rn "$pattern" "$TEMPLATE_DIR" --include="*.md" --include="*.sh" \
             --include="*.json" --include="*.plist" --include="*.yaml" \
-            --exclude='validate-template.sh' 2>/dev/null \
-            | grep -v 'github.com/' | wc -l | tr -d ' ' || true)
+            --exclude='validate-template.sh' --exclude='LEARNING-PATH.md' 2>/dev/null \
+            | grep -v 'github.com/' | grep -v 'docs/adr/' | wc -l | tr -d ' ' || true)
     if [ "$count" -gt 0 ]; then
         [ "$CHECK1_FAIL" -eq 0 ] && echo "FAIL"
         echo "  Found '$pattern' in $count non-URL locations:"
         grep -rn "$pattern" "$TEMPLATE_DIR" --include="*.md" --include="*.sh" \
             --include="*.json" --include="*.plist" \
-            --exclude='validate-template.sh' 2>/dev/null | grep -v 'github.com/' | head -3 || true
+            --exclude='validate-template.sh' --exclude='LEARNING-PATH.md' 2>/dev/null \
+            | grep -v 'github.com/' | grep -v 'docs/adr/' | head -3 || true
         CHECK1_FAIL=1
         FAIL=1
     fi
@@ -86,8 +88,8 @@ else
     echo "PASS"
 fi
 
-# 5. MEMORY.md — скелет (≤15 строк в таблице)
-echo -n "[5/5] MEMORY.md is skeleton... "
+# 4. MEMORY.md — скелет (≤15 строк в таблице)
+echo -n "[4/5] MEMORY.md is skeleton... "
 MEMORY_FILE="$TEMPLATE_DIR/memory/MEMORY.md"
 if [ -f "$MEMORY_FILE" ]; then
     rp_rows=$(grep -c '^|' "$MEMORY_FILE" 2>/dev/null || echo 0)
@@ -117,6 +119,28 @@ for f in CLAUDE.md ONTOLOGY.md README.md \
     fi
 done
 [ "$MISSING" -eq 0 ] && echo "PASS"
+
+# 6. Нет хардкод-путей к скриптам в протоколах/скиллах (WP-219, DP.FM.009)
+# Протоколы и скиллы должны использовать $IWE_SCRIPTS / $IWE_ROLES / $IWE_TEMPLATE / $IWE_WORKSPACE
+# вместо абсолютных путей к FMT-exocortex-template/scripts|roles.
+echo -n "[6/6] Hardcoded script paths in protocols/skills... "
+CHECK6_FAIL=0
+CHECK6_FILES=""
+for pattern in 'FMT-exocortex-template/scripts' 'FMT-exocortex-template/roles/[a-z]*/scripts'; do
+    hits=$(grep -rnE "$pattern" \
+            "$TEMPLATE_DIR/memory" \
+            "$TEMPLATE_DIR/.claude/skills" \
+            --include="*.md" 2>/dev/null \
+            | grep -v '\$IWE_' || true)
+    if [ -n "$hits" ]; then
+        [ "$CHECK6_FAIL" -eq 0 ] && echo "FAIL"
+        echo "  Pattern '$pattern' found (должен быть \$IWE_SCRIPTS / \$IWE_ROLES):"
+        echo "$hits" | head -3
+        CHECK6_FAIL=1
+        FAIL=1
+    fi
+done
+[ "$CHECK6_FAIL" -eq 0 ] && echo "PASS"
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then

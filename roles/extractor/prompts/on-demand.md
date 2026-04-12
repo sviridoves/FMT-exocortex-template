@@ -14,8 +14,8 @@
 ## Конфигурация
 
 > Перед обработкой прочитай:
-> 1. `/home/vps/IWE/DS-exocortex/roles/extractor/config/routing.md` — таблицы маршрутизации
-> 2. `/home/vps/IWE/DS-exocortex/roles/extractor/config/feedback-log.md` — лог отклонённых кандидатов
+> 1. `/home/vps/IWE/FMT-exocortex-template/roles/extractor/config/routing.md` — таблицы маршрутизации
+> 2. `/home/vps/IWE/FMT-exocortex-template/roles/extractor/config/feedback-log.md` — лог отклонённых кандидатов
 
 ## Алгоритм
 
@@ -40,7 +40,7 @@
 | Failure mode | Типовая ошибка | `fm` |
 | Правило | Ограничение, 1-3 строки | `rule` |
 
-### Шаг 5: Маршрутизация
+### Шаг 4: Маршрутизация
 
 Определи Pack по домену и директорию по типу — используй таблицы из `config/routing.md`.
 
@@ -49,8 +49,8 @@
 1. **Прочитай** целевую директорию Pack'а — найди существующие файлы для назначения ID.
 2. **Назначь ID:** `{PREFIX}.{TYPE}.{NNN}` (max существующий + 1).
 3. **Назначь имя файла:** `{PREFIX}.{TYPE}.{NNN}-{slug}.md`.
-5. **Привяжи к родительскому понятию SPF** (если доступен `SPF/ontology.md`).
-5. **Создай содержимое** по шаблону для данного типа (шаблоны — в `prompts/session-close.md`, шаг 5d).
+4. **Привяжи к родительскому понятию SPF** (если доступен `SPF/ontology.md`).
+5. **Создай содержимое** по шаблону для данного типа (шаблоны — в `prompts/session-close.md`, шаг 4d).
 
 ### Шаг 5b: Если сессия в downstream — проверь downstream ontology
 
@@ -59,10 +59,10 @@
 
 ### Шаг 6: Проверка противоречий
 
-1. **MCP-поиск:** `knowledge-mcp search("тема кандидата")` → есть ли похожее в базе?
-2. **MCP-документ:** `knowledge-mcp get_document("целевой файл")` → проверить содержимое (если существует)
+1. **MCP-поиск:** `knowledge_search("тема кандидата")` → есть ли похожее в базе?
+2. **MCP-документ:** `knowledge_get_document("целевой файл")` → проверить содержимое (если существует)
 3. Прочитай существующие сущности в целевой директории Pack'а.
-5. Прочитай `01B-distinctions.md` целевого Pack'а.
+4. Прочитай `01B-distinctions.md` целевого Pack'а.
 5. Прочитай `ontology.md` целевого Pack'а (если существует).
 6. Прочитай CLAUDE.md целевого репо.
 7. Оцени:

@@ -1,4 +1,4 @@
-# Генерация обложек для постов (S58)
+# Генерация обложек для постов (S48)
 
 Автоматическая генерация cover-изображений для постов из индекса знаний через OpenAI GPT Image API.
 
@@ -51,7 +51,7 @@ python setup/optional/generate-post-image.py path/to/post.md
 python setup/optional/generate-post-image.py path/to/post.md --prompt "мост между двумя мирами знаний"
 
 # Квадратная картинка (для соцсетей):
-python setup/optional/generate-post-image.py path/to/post.md --size 1025x1025
+python setup/optional/generate-post-image.py path/to/post.md --size 1024x1024
 
 # Высокое качество (дороже, ~$0.16 вместо ~$0.07):
 python setup/optional/generate-post-image.py path/to/post.md --quality high
@@ -70,7 +70,7 @@ python setup/optional/generate-post-image.py path/to/post.md --dry-run
    - `community` → сфокусированное, практичное (как мастерская с инструментами)
    - `advanced` → точное, техническое (как чертёж под направленным светом)
 3. **Стиль** — editorial illustration (как обложка журнала)
-5. **Композиция** — широкий кинематографический кадр, правило третей
+4. **Композиция** — широкий кинематографический кадр, правило третей
 5. **Правила** — никакого текста на картинке, метафора вместо буквального изображения
 
 ### Пример промпта
@@ -83,7 +83,7 @@ python setup/optional/generate-post-image.py path/to/post.md --dry-run
 
 | Параметр | Значение по умолчанию | Описание |
 |----------|----------------------|----------|
-| `--size` | `1536x1025` | Размер: `1536x1025` (горизонтальная), `1025x1025` (квадрат), `1025x1536` (вертикальная) |
+| `--size` | `1536x1024` | Размер: `1536x1024` (горизонтальная), `1024x1024` (квадрат), `1024x1536` (вертикальная) |
 | `--quality` | `medium` | Качество: `low` (~$0.02), `medium` (~$0.07), `high` (~$0.16) |
 | `--prompt` | из поста | Кастомный промпт (вместо автоматического) |
 | `--output` | рядом с постом | Путь сохранения |
@@ -91,7 +91,7 @@ python setup/optional/generate-post-image.py path/to/post.md --dry-run
 
 ## Стоимость
 
-~$0.07 за картинку (medium quality, 1536x1025). Для 10 постов в месяц — ~$0.70.
+~$0.07 за картинку (medium quality, 1536x1024). Для 10 постов в месяц — ~$0.70.
 
 ## Интеграция с публикаторами
 

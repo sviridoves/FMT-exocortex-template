@@ -22,15 +22,15 @@
 
 ### Шаг 0: Прочитать конфигурацию
 
-1. Прочитай `/home/vps/IWE/DS-exocortex/roles/extractor/config/routing.md` — таблицы маршрутизации.
-2. Прочитай `/home/vps/IWE/DS-exocortex/roles/extractor/config/feedback-log.md` — лог отклонённых кандидатов. Если capture похож на ранее отклонённый → пропусти.
+1. Прочитай `/home/vps/IWE/FMT-exocortex-template/roles/extractor/config/routing.md` — таблицы маршрутизации.
+2. Прочитай `/home/vps/IWE/FMT-exocortex-template/roles/extractor/config/feedback-log.md` — лог отклонённых кандидатов. Если capture похож на ранее отклонённый → пропусти.
 
 ### Шаг 1: Проверить inbox
 
 1. Прочитай `/home/vps/IWE/DS-strategy/inbox/captures.md`
 2. Найди все pending записи (секции `### ...` без метки `[processed]`)
 3. Если pending записей нет → напиши в лог `No pending captures in inbox` и **заверши работу**
-5. Если pending > 5 → возьми первые 5 (по порядку в файле)
+4. Если pending > 5 → возьми первые 5 (по порядку в файле)
 
 ### Шаг 2: Обработать каждый capture (max 5)
 
@@ -57,7 +57,7 @@
 
 1. Прочитай целевую директорию ТОЛЬКО нужного Pack'а → найди существующие файлы → назначь ID
 2. Имя файла: по конвенции из routing.md § 3
-3. Создай содержимое по шаблону (шаблоны — в `prompts/session-close.md`, шаг 5d)
+3. Создай содержимое по шаблону (шаблоны — в `prompts/session-close.md`, шаг 4d)
 
 **2d. Валидация:**
 
@@ -133,7 +133,7 @@ remaining: M
 | Осталось в inbox | M |
 ```
 
-### Шаг 5: Пометить captures как проанализированные
+### Шаг 4: Пометить captures как проанализированные
 
 В `DS-strategy/inbox/captures.md` — для каждого проанализированного capture добавь метку `[analyzed YYYY-MM-DD]` к заголовку:
 
@@ -165,6 +165,6 @@ remaining: M
 1. Прочитай последний отчёт из `DS-strategy/inbox/extraction-reports/`
 2. Покажи каждый кандидат пользователю
 3. Для accept — создай файл, закоммить в целевой Pack
-5. Для reject — записать причину в feedback-log.md
+4. Для reject — записать причину в feedback-log.md
 5. Для defer — оставь в отчёте для следующего цикла
 6. Обнови статус отчёта: `status: applied`

@@ -32,7 +32,7 @@ if ! command -v timeout &>/dev/null; then
                 waitpid($pid, 0);
                 alarm 0;
             };
-            if ($@ && $@ eq "timeout\n") { waitpid($pid, WNOHANG); exit 125; }
+            if ($@ && $@ eq "timeout\n") { waitpid($pid, WNOHANG); exit 124; }
             exit ($? >> 8);
         ' "$duration" "$@"
     }
@@ -61,7 +61,8 @@ notify() {
 
 notify_telegram() {
     local scenario="$1"
-    "$HOME/IWE/DS-IT-systems/DS-ai-systems/synchronizer/scripts/notify.sh" strategist "$scenario" >> "$LOG_FILE" 2>&1 || true
+    local notify_script="$REPO_DIR/../synchronizer/scripts/notify.sh"
+    [ -f "$notify_script" ] && "$notify_script" strategist "$scenario" >> "$LOG_FILE" 2>&1 || true
 }
 
 run_claude() {
@@ -98,29 +99,28 @@ ${prompt}"
 
     # Запуск Claude Code с содержимым команды как промпт (с timeout-защитой)
     local rc=0
-    timeout "$CLAUDE_TIMEOUT" "$CLAUDE_PATH" task --yolo \
+    timeout "$CLAUDE_TIMEOUT" "$CLAUDE_PATH" --dangerously-skip-permissions \
+        --allowedTools "Read,Write,Edit,Glob,Grep,Bash" \
         -p "$prompt" \
         >> "$LOG_FILE" 2>&1 || rc=$?
 
-    if [ $rc -eq 125 ]; then
+    if [ $rc -eq 124 ]; then
         log "WARN: Claude CLI timed out after ${CLAUDE_TIMEOUT}s for scenario: $command_file"
     elif [ $rc -ne 0 ]; then
         log "WARN: Claude CLI exited with code $rc for scenario: $command_file"
     fi
 
-    log "Completed scenario: $command_file"
+    if [ $rc -eq 0 ]; then
+        log "SUCCESS scenario: $command_file"
+    else
+        log "FAILED scenario: $command_file (rc=$rc)"
+    fi
 
     # Push changes to GitHub (чтобы бот мог читать через API)
     if git -C "$WORKSPACE" diff --quiet origin/main..HEAD 2>/dev/null; then
         log "No unpushed commits"
     else
-        # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
-        if ! git -C "$WORKSPACE" pull >> "$LOG_FILE" 2>&1; then
-            # Если обычный pull не работает, пробуем rebase
-            git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Pulled (rebase)" || log "WARN: pull --rebase failed"
-        else
-            log "Pulled (merge)"
-        fi
+        git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Pulled (rebase)" || log "WARN: pull --rebase failed"
         git -C "$WORKSPACE" push >> "$LOG_FILE" 2>&1 && log "Pushed to GitHub" || log "WARN: git push failed"
     fi
 
@@ -133,12 +133,13 @@ ${prompt}"
     local summary
     summary=$(tail -5 "$LOG_FILE" | grep -v '^\[' | head -3)
     notify "Стратег: $command_file" "$summary"
+    return $rc
 }
 
 # Проверка: уже запускался ли сценарий сегодня
 already_ran_today() {
     local scenario="$1"
-    [ -f "$LOG_FILE" ] && grep -q "Completed scenario: $scenario" "$LOG_FILE"
+    [ -f "$LOG_FILE" ] && grep -q "SUCCESS scenario: $scenario" "$LOG_FILE"
 }
 
 # File-based lock to prevent concurrent execution (RunAtLoad + CalendarInterval race)
@@ -165,7 +166,7 @@ acquire_lock() {
     trap "rm -rf \"$lockdir\" 2>/dev/null" EXIT
 }
 
-# Читаем strategy_day из конфига (L5 Personal)
+# Читаем strategy_day из конфига (L4 Personal)
 RHYTHM_CONFIG="$HOME/.claude/projects/-Users-$(whoami)-IWE/memory/day-rhythm-config.yaml"
 STRATEGY_DAY_NAME=$(grep 'strategy_day:' "$RHYTHM_CONFIG" 2>/dev/null | awk '{print $2}' || echo "monday")
 # Конвертируем имя дня в номер (1=Mon..7=Sun)
@@ -173,7 +174,7 @@ case "$STRATEGY_DAY_NAME" in
     monday)    STRATEGY_DAY_NUM=1 ;;
     tuesday)   STRATEGY_DAY_NUM=2 ;;
     wednesday) STRATEGY_DAY_NUM=3 ;;
-    thursday)  STRATEGY_DAY_NUM=5 ;;
+    thursday)  STRATEGY_DAY_NUM=4 ;;
     friday)    STRATEGY_DAY_NUM=5 ;;
     saturday)  STRATEGY_DAY_NUM=6 ;;
     sunday)    STRATEGY_DAY_NUM=7 ;;
@@ -221,8 +222,9 @@ case "$1" in
         log "Sunday: running week review"
         run_claude "week-review"
         # Fallback push for Knowledge Index (week-review creates a post there)
+        # KI_REPO may not exist for all users — guard with [ -d ]
         KI_REPO="$HOME/IWE/DS-Knowledge-Index"
-        if git -C "$KI_REPO" log --oneline -1 --since="1 hour ago" --grep="week-review" 2>/dev/null | grep -q .; then
+        if [ -d "$KI_REPO/.git" ] && git -C "$KI_REPO" log --oneline -1 --since="1 hour ago" --grep="week-review" 2>/dev/null | grep -q .; then
             git -C "$KI_REPO" push >> "$LOG_FILE" 2>&1 && log "Pushed Knowledge Index (fallback)" || log "WARN: KI push failed"
         fi
         notify_telegram "week-review"
@@ -248,7 +250,7 @@ case "$1" in
 
         run_claude "note-review"
 
-        # Canary: count bold notes after (needs to be visible for alert at line ~275)
+        # Canary: count bold notes after (needs to be visible for alert at line ~274)
         BOLD_AFTER=$(grep -c '^\*\*' "$FLEETING" 2>/dev/null || echo 0)
         BOLD_NEW_AFTER=$(grep -vc '🔄' <(grep '^\*\*' "$FLEETING" 2>/dev/null) 2>/dev/null || echo 0)
         # Non-blocking diagnostic (isolated from set -e to protect cleanup below)
@@ -270,13 +272,7 @@ case "$1" in
         if ! git -C "$WORKSPACE" diff --quiet -- inbox/fleeting-notes.md archive/notes/Notes-Archive.md 2>/dev/null; then
             git -C "$WORKSPACE" add inbox/fleeting-notes.md archive/notes/Notes-Archive.md
             git -C "$WORKSPACE" commit -m "chore: auto-cleanup processed notes from fleeting-notes.md" >> "$LOG_FILE" 2>&1 || true
-             # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
-             if ! git -C "$WORKSPACE" pull >> "$LOG_FILE" 2>&1; then
-                 # Если обычный pull не работает, пробуем rebase
-                 git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Cleanup: pulled (rebase)" || log "WARN: cleanup pull --rebase failed"
-             else
-                 log "Cleanup: pulled (merge)"
-             fi
+            git -C "$WORKSPACE" pull --rebase >> "$LOG_FILE" 2>&1 && log "Cleanup: pulled (rebase)" || log "WARN: cleanup pull --rebase failed"
             git -C "$WORKSPACE" push >> "$LOG_FILE" 2>&1 && log "Cleanup: pushed" || log "WARN: cleanup push failed"
         else
             log "Cleanup: no changes to commit"
@@ -310,7 +306,7 @@ case "$1" in
         echo "Usage: $0 {morning|note-review|week-review|session-prep|strategy-session|day-plan|day-close}"
         echo ""
         echo "Scenarios:"
-        echo "  morning           - 5:00 EET daily (session-prep on Mon, day-plan others)"
+        echo "  morning           - 4:00 EET daily (session-prep on Mon, day-plan others)"
         echo "  note-review       - 23:00 EET daily (review fleeting notes + clean inbox)"
         echo "  week-review       - Sunday 19:00 EET review for club"
         echo "  session-prep      - Manual session prep (headless preparation)"

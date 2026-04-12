@@ -62,7 +62,7 @@ fi
 
 echo "✅ Workflow cloud-scheduler.yml найден"
 
-# 5. Telegram-уведомления (опционально)
+# 4. Telegram-уведомления (опционально)
 echo ""
 echo "--- Telegram-уведомления (опционально) ---"
 echo "Для получения health check отчётов в Telegram нужны:"
@@ -108,7 +108,7 @@ fi
 echo ""
 echo "=== Готово ==="
 echo ""
-echo "Cloud Scheduler будет запускаться ежедневно в 05:00 MSK (01:00 UTC)."
+echo "Cloud Scheduler будет запускаться ежедневно в 04:00 MSK (01:00 UTC)."
 echo "Ручной запуск: gh workflow run cloud-scheduler.yml --repo $STRATEGY_REPO_NAME"
 echo ""
 echo "Подробности: DP.SC.019 (PACK-digital-platform/08-service-clauses/)"

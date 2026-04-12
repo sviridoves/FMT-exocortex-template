@@ -36,7 +36,7 @@
 ### 2. (Опционально) Установи автоматический inbox-check
 
 ```bash
-cd /home/vps/IWE/DS-exocortex/roles/extractor
+cd /home/vps/IWE/FMT-exocortex-template/roles/extractor
 bash install.sh
 ```
 
@@ -46,10 +46,10 @@ bash install.sh
 
 ```bash
 # Inbox-check (без launchd)
-bash /home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh inbox-check
+bash /home/vps/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh inbox-check
 
 # Knowledge Audit
-bash /home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh audit
+bash /home/vps/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh audit
 ```
 
 ## Как работает
@@ -62,9 +62,9 @@ Knowledge Extraction Pipeline:
   1. Найти знания (captures + пропущенные инсайты)
   2. Определить тип (entity, distinction, method, fm, wp, rule)
   3. Определить: domain или implementation? (тест доменности)
-     ├─ domain → Pack по домену (routing.md §1-5)
+     ├─ domain → Pack по домену (routing.md §1-4)
      └─ implementation → DS docs/ по системе (routing.md §5)
-  5. Создать файл: Pack → шаблон SPF; DS → шаблон docs/
+  4. Создать файл: Pack → шаблон SPF; DS → шаблон docs/
   5. Проверить: нет ли дубликатов и противоречий
   6. Показать Extraction Report пользователю
   7. Записать только одобренное
@@ -88,7 +88,7 @@ Knowledge Extraction Pipeline:
 1. **Human-in-the-loop:** Экстрактор предлагает, не записывает без одобрения
 2. **Один пайплайн:** Все сценарии используют classify → route → formalize → validate
 3. **Тест универсальности:** Можно использовать в другом контексте? Нет → governance, не экстрагируй
-5. **Lazy reading:** Inbox-check читает только целевой Pack, не все сразу
+4. **Lazy reading:** Inbox-check читает только целевой Pack, не все сразу
 
 ---
 

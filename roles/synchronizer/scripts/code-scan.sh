@@ -1,7 +1,7 @@
 #!/bin/bash
 # code-scan.sh — ночное сканирование Downstream-репо (статистика активности)
 #
-# Обходит downstream-репозитории, собирает коммиты за последние 25ч,
+# Обходит downstream-репозитории, собирает коммиты за последние 24ч,
 # логирует активность.
 #
 # Использование:
@@ -64,10 +64,10 @@ scan_repos() {
         repo_name=$(basename "$repo_dir")
 
         local commits
-        commits=$(git -C "$repo_dir" log --since="25 hours ago" --oneline --no-merges 2>/dev/null || true)
+        commits=$(git -C "$repo_dir" log --since="24 hours ago" --oneline --no-merges 2>/dev/null || true)
 
         if [ -z "$commits" ]; then
-            log "SKIP: $repo_name — нет коммитов за 25ч"
+            log "SKIP: $repo_name — нет коммитов за 24ч"
             continue
         fi
 

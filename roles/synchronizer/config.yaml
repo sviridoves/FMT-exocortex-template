@@ -4,12 +4,12 @@
 
 schedules:
   strategist:
-    script: "/home/vps/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh"
+    script: "/home/vps/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh"
     scenarios:
       morning:
         type: daily
         hour: "5"     # Mon=session-prep, Tue-Sun=day-plan
-        window: "5-21"                # После 22:00 бесполезен
+        window: "4-21"                # После 22:00 бесполезен
       note-review:
         type: daily
         hour: 23
@@ -20,7 +20,7 @@ schedules:
         hour: 0
 
   extractor:
-    script: "/home/vps/IWE/DS-exocortex/roles/extractor/scripts/extractor.sh"
+    script: "/home/vps/IWE/FMT-exocortex-template/roles/extractor/scripts/extractor.sh"
     scenarios:
       inbox-check:
         type: interval

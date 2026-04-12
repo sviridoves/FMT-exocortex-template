@@ -25,7 +25,7 @@ graph TB
     end
 
     subgraph mastery["<b>МОДЕЛЬ МАСТЕРСТВА</b>"]
-        T1["T1 Старт"] --> T2["T2 Практика"] --> T3["T3 Рост"] --> T5["T5 Мастерство"]
+        T1["T1 Старт"] --> T2["T2 Практика"] --> T3["T3 Рост"] --> T4["T4 Мастерство"]
     end
 
     subgraph community["<b>СООБЩЕСТВО</b>"]
@@ -44,11 +44,11 @@ graph TB
     mastery -->|"куда растёшь"| pair
     community -->|"где живёшь"| pair
 
-    style core fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style core fill:#fce4ec,stroke:#e53935,stroke-width:2px
     style culture fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style mastery fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style mastery fill:#e8f5e9,stroke:#43a047,stroke-width:2px
     style community fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style pair fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
+    style pair fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
 ```
 
 ---
@@ -62,19 +62,19 @@ graph LR
     S1["<b>Шаг 1</b><br/>Пойми зачем<br/><i>~15 мин</i><br/>────────<br/>Читаешь этот<br/>документ"]
     S2["<b>Шаг 2</b><br/>Установи<br/><i>~20 мин</i><br/>────────<br/>VS Code + Claude Code<br/>+ GitHub аккаунт"]
     S3["<b>Шаг 3</b><br/>Первая сессия<br/><i>~30 мин</i><br/>────────<br/>Стратегический документ<br/>+ план на неделю"]
-    S5["<b>Шаг 5</b><br/>Практика<br/><i>1-2 недели</i><br/>────────<br/>Ритуалы ОРЗ<br/>каждый день"]
+    S4["<b>Шаг 4</b><br/>Практика<br/><i>1-2 недели</i><br/>────────<br/>Ритуалы ОРЗ<br/>каждый день"]
     S5["<b>Шаг 5</b><br/>Теории<br/><i>свой темп</i><br/>────────<br/>Системное мышление<br/>и курсы ШСМ"]
 
     S1 -->|"ИИ поможет"| S2
     S2 -->|"Claude ведёт"| S3
-    S3 -->|"привыкаешь"| S5
-    S5 -->|"готов к глубине"| S5
+    S3 -->|"привыкаешь"| S4
+    S4 -->|"готов к глубине"| S5
 
     style S1 fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style S2 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style S2 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
     style S3 fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style S5 fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
-    style S5 fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style S4 fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+    style S5 fill:#fce4ec,stroke:#e53935,stroke-width:2px
 ```
 
 ---
@@ -94,7 +94,7 @@ graph TD
     Z -->|"завтра"| O
 
     style O fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style R fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style R fill:#e8f5e9,stroke:#43a047,stroke-width:2px
     style Z fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
 ```
 
@@ -102,25 +102,25 @@ graph TD
 
 ## Схема 3.5. Культура работы — три типа элементов
 
-> 15 элементов культуры работы IWE, разделённых на три типа. Культура — то, за что платят.
+> 14 элементов культуры работы IWE, разделённых на три типа. Культура — то, за что платят.
 
 ```mermaid
 graph TD
-    subgraph culture["<b>КУЛЬТУРА РАБОТЫ (15 элементов)</b>"]
+    subgraph culture["<b>КУЛЬТУРА РАБОТЫ (14 элементов)</b>"]
         direction TB
 
         subgraph protocols["<b>Протоколы</b> (делаешь по шагам)"]
             P1["ОРЗ"]
             P2["АрхГейт"]
             P3["Day Open/Close"]
-            P5["Week Close"]
+            P4["Week Close"]
         end
 
         subgraph skills["<b>Навыки</b> (нарабатываешь практикой)"]
             S1["Capture"]
             S2["Self-correction"]
             S3["Различения"]
-            S5["WP Gate"]
+            S4["WP Gate"]
         end
 
         subgraph formats["<b>Форматы</b> (оформляешь по стандарту)"]
@@ -134,15 +134,15 @@ graph TD
     skills -->|"по ситуации"| RESULT
     formats -->|"по стандарту"| RESULT
 
-    style protocols fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style protocols fill:#fce4ec,stroke:#e53935,stroke-width:2px
     style skills fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style formats fill:#e8f5e9,stroke:#53a057,stroke-width:2px
-    style RESULT fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
+    style formats fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style RESULT fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
 ```
 
 ---
 
-## Схема 5. Уровни освоения (тиры)
+## Схема 4. Уровни освоения (тиры)
 
 > Начинай с T1. Добавляй компоненты по мере готовности.
 
@@ -151,16 +151,16 @@ graph BT
     T1["<b>T1 — Старт</b><br/>Claude Code + экзокортекс<br/>────────<br/>ИИ-ассистент, который<br/>тебя помнит"]
     T2["<b>T2 — Практика</b><br/>+ ритуалы ОРЗ + план дня<br/>────────<br/>Структурированная работа<br/>без потери контекста"]
     T3["<b>T3 — Рост</b><br/>+ Pack + бот @aist_me_bot<br/>────────<br/>База знаний +<br/>мобильный доступ"]
-    T5["<b>T5 — Мастерство</b><br/>+ роли + автоматизация<br/>────────<br/>ИИ-агенты работают<br/>самостоятельно"]
+    T4["<b>T4 — Мастерство</b><br/>+ роли + автоматизация<br/>────────<br/>ИИ-агенты работают<br/>самостоятельно"]
 
     T1 --> T2
     T2 --> T3
-    T3 --> T5
+    T3 --> T4
 
     style T1 fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
-    style T2 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style T2 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
     style T3 fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style T5 fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style T4 fill:#fce4ec,stroke:#e53935,stroke-width:2px
 ```
 
 ---
@@ -194,11 +194,11 @@ graph TD
     AI -->|"помогает структурировать"| PACK
 
     style THEORIES fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
-    style ZP fill:#fce5ec,stroke:#e53935,stroke-width:2px
-    style FPF fill:#fce5ec,stroke:#e53935,stroke-width:2px
+    style ZP fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style FPF fill:#fce4ec,stroke:#e53935,stroke-width:2px
     style PACK fill:#fff3e0,stroke:#fb8c00,stroke-width:2px
-    style DS fill:#e8f5e9,stroke:#53a057,stroke-width:2px
-    style USER fill:#f3e5f5,stroke:#8e25aa,stroke-width:2px
+    style DS fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style USER fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
     style AI fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px
 ```
 
@@ -226,8 +226,8 @@ graph LR
         G1 --> G2 --> G3
     end
 
-    style bad fill:#fce5ec,stroke:#e53935,stroke-width:2px
-    style good fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style bad fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style good fill:#e8f5e9,stroke:#43a047,stroke-width:2px
 ```
 
 ---
@@ -250,14 +250,14 @@ graph LR
     P2 -->|"решает"| S2
     P3 -->|"решает"| S3
 
-    style P1 fill:#fce5ec,stroke:#e53935,stroke-width:2px
-    style P2 fill:#fce5ec,stroke:#e53935,stroke-width:2px
-    style P3 fill:#fce5ec,stroke:#e53935,stroke-width:2px
-    style S1 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
-    style S2 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
-    style S3 fill:#e8f5e9,stroke:#53a057,stroke-width:2px
+    style P1 fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style P2 fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style P3 fill:#fce4ec,stroke:#e53935,stroke-width:2px
+    style S1 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style S2 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
+    style S3 fill:#e8f5e9,stroke:#43a047,stroke-width:2px
 ```
 
 ---
 
-*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [DS-exocortex](https://github.com/TserenTserenov/DS-exocortex)*
+*Создан: 2026-03-17 | Обновлён: 2026-03-27 | WP-120 | [FMT-exocortex-template](https://github.com/TserenTserenov/FMT-exocortex-template)*

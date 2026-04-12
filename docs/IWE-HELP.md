@@ -3,11 +3,11 @@
 > Краткая справка по Intellectual Work Environment (IWE) для поиска и ответов бота.
 > Полная установка: [SETUP-GUIDE.md](SETUP-GUIDE.md)
 >
-> **Source-of-truth:** Pack-сущности платформы (доступны через MCP `knowledge-mcp`):
+> **Source-of-truth:** Pack-сущности платформы (доступны через Gateway `iwe-knowledge`):
 > - `DP.IWE.001` — что такое IWE, зачем, архитектура
 > - `DP.IWE.002` — шаблон и установка, пререквизиты, FAQ, безопасность
 > - `DP.EXOCORTEX.001` — архитектура экзокортекса (3 слоя, модули)
-> - `DP.ARCH.002` — тиры T0-T5 + TM1-TM3 + TA1-TA5 + TD1
+> - `DP.ARCH.002` — тиры T0-T4 + TM1-TM3 + TA1-TA4 + TD1
 > - `DP.ROLE.001` — реестр ИИ-ролей
 
 ---
@@ -18,13 +18,13 @@ IWE (Intellectual Work Environment) — интеллектуальная раб�
 
 | Вид | Что | Примеры |
 |-----|-----|---------|
-| **Системы** | Программы с 5D-границами | Claude Code, Telegram-бот, MCP-серверы, WakaTime, Git, экзокортекс (файлы), Neon DB |
+| **Системы** | Программы с 4D-границами | Claude Code, Telegram-бот, MCP-серверы, WakaTime, Git, экзокортекс (файлы), Neon DB |
 | **Описания** | Знания, загружаемые в системы | FPF/SPF/ZP, Pack-сущности, промпты ролей, содержимое экзокортекса |
 | **Роли** | Функция, не исполнитель | Стратег (R1) ← Claude, Экстрактор (R2), Синхронизатор (R8), Пользователь ← Человек |
 | **Методы** | Процедуры «как делать» | Протокол ОРЗ, Capture-to-Pack, ArchGate, KE, Note-Review |
 | **Рабочие продукты** | Что производится | DS-strategy, Pack-документы, DS-проекты, события ЦД |
 
-Полная архитектурная модель: [LEARNING-PATH.md § 1.2](LEARNING-PATH.md). Source-of-truth: `DP.IWE.001` (через MCP: `knowledge-mcp search("IWE архитектура")`).
+Полная архитектурная модель: [LEARNING-PATH.md § 1.2](LEARNING-PATH.md). Source-of-truth: `DP.IWE.001` (через Gateway: `knowledge_search("IWE архитектура")`).
 
 ---
 
@@ -60,43 +60,42 @@ IWE (Intellectual Work Environment) — интеллектуальная раб�
 
 ## Доступ к знаниям (MCP)
 
-MCP (Model Context Protocol) — протокол, через который Claude Code подключается к базе знаний платформы. Два сервера:
+MCP (Model Context Protocol) — протокол, через который Claude Code подключается к базе знаний платформы. Один Gateway-сервер агрегирует все бэкенды:
 
 | Сервер | Что даёт | Инструменты |
 |--------|---------|-------------|
-| **knowledge-mcp** | Поиск по Pack-репо, руководствам, DS (~5500 документов) | `search`, `get_document`, `list_sources` |
-| **ddt** | Цифровой двойник ученика (цели, самооценка) | `describe_by_path`, `read_digital_twin`, `write_digital_twin` |
+| **iwe-knowledge** (Gateway: `mcp.aisystant.com/mcp`) | Поиск по Pack-репо, руководствам, DS (~5400 документов) + цифровой двойник | `knowledge_search`, `knowledge_get_document`, `knowledge_list_sources`, `dt_read_digital_twin`, `dt_write_digital_twin`, `dt_describe_by_path` |
 
-> Поиск по руководствам: `knowledge-mcp search("запрос", source_type="guides")`.
+> Поиск по руководствам: `knowledge_search("запрос", source_type="guides")`.
 
-MCP подключается через https://claude.ai/settings/connectors (см. SETUP-GUIDE §1.3b). Проверка: `/mcp` в Claude Code → серверы Connected. Попроси «Найди документы про принципы» — Claude использует `knowledge-mcp search`.
+MCP подключается через https://claude.ai/settings/connectors (см. SETUP-GUIDE §1.3b). Проверка: `/mcp` в Claude Code → серверы Connected. Попроси «Найди документы про принципы» — Claude использует `knowledge_search`.
 
 ---
 
 ## Три роли в IWE
 
 > В шаблоне экзокортекса **3 роли**, доступные сразу: Стратег, Экстрактор, Синхронизатор. Платформа поддерживает 21 роль — они подключаются по мере развития системы.
-> Полный реестр ролей: `DP.ROLE.001` (через MCP: `knowledge-mcp search("реестр ролей агентов")`).
+> Полный реестр ролей: `DP.ROLE.001` (через Gateway: `knowledge_search("реестр ролей агентов")`).
 
 ### Стратег (R1)
 Планирование и рефлексия. Каждое утро (Вт-Вс) формирует план дня из коммитов вчера. Понедельник — подготовка к недельной сессии. Вечером (23:00) — разбор заметок из Telegram.
 
 Ручной запуск (в терминале или встроенном терминале VS Code):
 ```bash
-bash ~/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh day-plan
+bash ~/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh day-plan
 ```
 
 ### Экстрактор (R2)
-Извлечение знаний в Pack-репозитории. 5 сценария: session-close (при закрытии сессии), on-demand (по запросу), inbox-check (каждые 3 часа), knowledge-audit (аудит полноты).
+Извлечение знаний в Pack-репозитории. 4 сценария: session-close (при закрытии сессии), on-demand (по запросу), inbox-check (каждые 3 часа), knowledge-audit (аудит полноты).
 
 Всегда предлагает, никогда не пишет без одобрения (human-in-the-loop).
 
-Установка (в терминале): `bash ~/IWE/DS-exocortex/roles/extractor/install.sh`
+Установка (в терминале): `bash ~/IWE/FMT-exocortex-template/roles/extractor/install.sh`
 
 ### Синхронизатор (R8)
 Центральный диспетчер (bash, не ИИ). Управляет расписанием всех ролей, отправляет уведомления в Telegram, делает ночной обзор кода.
 
-Установка (в терминале): `bash ~/IWE/DS-exocortex/roles/synchronizer/install.sh`
+Установка (в терминале): `bash ~/IWE/FMT-exocortex-template/roles/synchronizer/install.sh`
 
 ---
 
@@ -129,7 +128,7 @@ MEMORY.md — личные (текущие задачи, РП недели). Р�
 ## Обновление IWE
 
 ```bash
-cd ~/IWE/DS-exocortex
+cd ~/IWE/FMT-exocortex-template
 bash update.sh          # обновить
 bash update.sh --check  # проверить без применения
 ```
@@ -187,8 +186,7 @@ export TELEGRAM_CHAT_ID="your-id"
 | Routing | Таблица маршрутизации знаний (куда класть captures) |
 | Marp | Инструмент для создания слайдов из Markdown. Workflow: `.md` → предпросмотр (VS Code) → PDF/HTML (`marp --pdf`). Используется для слайдоментов |
 | MCP | Model Context Protocol — доступ Claude Code к внешним базам знаний |
-| knowledge-mcp | MCP-сервер: поиск по Pack, руководствам, DS |
-| ddt | MCP-сервер: цифровой двойник ученика |
+| iwe-knowledge | Gateway MCP-сервер (`mcp.aisystant.com/mcp`): поиск по Pack, руководствам, DS + цифровой двойник |
 
 ---
 
@@ -199,9 +197,9 @@ export TELEGRAM_CHAT_ID="your-id"
 - [LEARNING-PATH.md](LEARNING-PATH.md) — полный путь изучения: принципы, протоколы, агенты, Pack, SOTA
 - [principles-vs-skills.md](principles-vs-skills.md) — почему навыков недостаточно: принципы и генеративная иерархия
 
-**В Pack (через MCP `knowledge-mcp search`):**
+**В Pack (через Gateway `knowledge_search`):**
 - `DP.IWE.001` — что такое IWE, зачем, 5 архитектурных видов, сравнения (vs экзокортекс, vs агенты, vs second brain)
 - `DP.IWE.002` — шаблон и установка: пререквизиты, стоимость, роли, ОРЗ, FAQ, безопасность
 - `DP.EXOCORTEX.001` — модульный экзокортекс: 3 слоя, template-sync, standard/personal
-- `DP.ARCH.002` — тиры T0-T5 + TM1-TM3 + TA1-TA5 + TD1: что доступно на каждом уровне
+- `DP.ARCH.002` — тиры T0-T4 + TM1-TM3 + TA1-TA4 + TD1: что доступно на каждом уровне
 - `DP.ROLE.001` — полный реестр ИИ-ролей (21 роль)

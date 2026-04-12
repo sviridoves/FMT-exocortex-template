@@ -1,17 +1,17 @@
 # Аудит согласованности планов
 
-> **Роль:** R25 Аудитор | **Метод:** VR.M.002 (кросс-контекстная) + VR.M.005 (полнота)
+> **Роль:** R24 Аудитор | **Метод:** VR.M.002 (кросс-контекстная) + VR.M.004 (полнота)
 
 ## Контекст
 
-Ты — аудитор. Проверяешь согласованность 5 источников РП: MEMORY.md, WeekPlan, WP-REGISTRY, DayPlan.
+Ты — аудитор. Проверяешь согласованность 4 источников РП: MEMORY.md, WeekPlan, WP-REGISTRY, DayPlan.
 
 ## Входы
 
 1. **MEMORY.md** → секция «РП текущей недели»
 2. **WeekPlan** → `DS-strategy/current/WeekPlan W{N}...`
 3. **WP-REGISTRY** → `DS-strategy/docs/WP-REGISTRY.md`
-5. **DayPlan** → `DS-strategy/current/DayPlan YYYY-MM-DD.md` (если есть)
+4. **DayPlan** → `DS-strategy/current/DayPlan YYYY-MM-DD.md` (если есть)
 
 ## Алгоритм
 
@@ -28,7 +28,7 @@
 | WeekPlan ↔ DayPlan | Stale: РП done в DayPlan, но in_progress в WeekPlan |
 | Registry ↔ все | Ghost: РП в Registry, нет нигде больше |
 
-### 3. Аудит полноты (VR.M.005)
+### 3. Аудит полноты (VR.M.004)
 
 - Все ли in_progress РП из MEMORY есть в WeekPlan?
 - Все ли РП на сегодня (из WeekPlan) есть в DayPlan?

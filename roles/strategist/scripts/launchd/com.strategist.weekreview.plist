@@ -7,7 +7,7 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/home/vps/IWE/DS-exocortex/roles/strategist/scripts/strategist.sh</string>
+        <string>/home/vps/IWE/FMT-exocortex-template/roles/strategist/scripts/strategist.sh</string>
         <string>week-review</string>
     </array>
 

@@ -10,7 +10,7 @@ jobs:
   shellcheck:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       - name: Install ShellCheck
         run: sudo apt-get install -y shellcheck
@@ -28,7 +28,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
 
       # 1. Нет автор-специфичного контента
       - name: Check for author-specific content
@@ -89,7 +89,7 @@ jobs:
             echo "WARN: memory/MEMORY.md not found"
           fi
 
-      # 5. Обязательные файлы
+      # 4. Обязательные файлы
       - name: Check required files
         run: |
           FAIL=0
@@ -108,7 +108,7 @@ jobs:
       # 5. MCP — серверы подключаются через claude.ai/settings/connectors (не локально)
       - name: Check MCP documentation
         run: |
-          # MCP servers (knowledge-mcp, ddt) are managed through claude.ai connectors
+          # MCP Gateway (iwe-knowledge at mcp.aisystant.com/mcp) is managed through claude.ai connectors
           # Validate that setup.sh contains instructions for users
           if grep -q "claude.ai/settings/connectors" setup.sh; then
             echo "PASS: setup.sh contains MCP connector instructions"

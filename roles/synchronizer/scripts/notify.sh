@@ -38,7 +38,7 @@ send_telegram() {
     local text="$1"
     local buttons="${2:-[]}"
 
-    text="${text:0:5000}"
+    text="${text:0:4000}"
 
     local escaped_text
     escaped_text=$(printf '%s' "$text" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')

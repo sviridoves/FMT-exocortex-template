@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "knowledge-mcp": {
+      "command": "curl",
+      "args": ["-s", "https://knowledge-mcp.aisystant.workers.dev/mcp"]
+    },
+    "digital-twin-mcp": {
+      "command": "curl",
+      "args": ["-s", "https://digital-twin-mcp.aisystant.workers.dev/mcp"]
+    }
+  }
+}

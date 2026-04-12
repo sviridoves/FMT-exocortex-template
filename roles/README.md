@@ -10,7 +10,7 @@
 | Роль | ID | Тип | Сценарии | Автоматизация |
 |------|----|-----|----------|---------------|
 | [Стратег](strategist/) | R1 | ИИ-агент (Claude) | 9 | launchd (утро, вечер, неделя) |
-| [Экстрактор](extractor/) | R2 | ИИ-агент (Claude) | 5 | launchd (каждые 3 часа) |
+| [Экстрактор](extractor/) | R2 | ИИ-агент (Claude) | 4 | launchd (каждые 3 часа) |
 | [Синхронизатор](synchronizer/) | R8 | Bash-инструмент | 5 скриптов | launchd (10 точек/день) |
 
 ## Стратег (R1)
@@ -26,7 +26,7 @@
 | week-review | Ночь (Вс→Пн) | Секция «Итоги W{N}» в WeekPlan + пост |
 | note-review | Вечер (23:00) | Классификация заметок из inbox |
 | strategy-session | По запросу | Интерактивная стратегическая сессия |
-| + 5 других | По запросу | См. `strategist/prompts/` |
+| + 4 других | По запросу | См. `strategist/prompts/` |
 
 **Установка:** `bash roles/strategist/install.sh`
 
@@ -84,7 +84,7 @@ export TELEGRAM_CHAT_ID="your-id"
 1. Создай `roles/<name>/`
 2. Создай `role.yaml` по схеме из [ROLE-CONTRACT.md](ROLE-CONTRACT.md)
 3. Добавь `README.md` с описанием (шаблон: [DP.D.033 §3](https://github.com/TserenTserenov/PACK-digital-platform/blob/main/pack/digital-platform/01-domain-contract/DP.D.033-role-centric-architecture.md))
-5. Добавь `install.sh` (скопируй из существующей роли, адаптируй)
+4. Добавь `install.sh` (скопируй из существующей роли, адаптируй)
 5. Если ИИ-агент: добавь `prompts/` со сценариями
 6. Если нужно расписание: добавь секцию в `synchronizer/config.yaml`
 7. Для уведомлений: добавь шаблон `synchronizer/scripts/templates/<name>.sh`

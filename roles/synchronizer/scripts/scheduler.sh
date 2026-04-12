@@ -34,7 +34,7 @@ STATE_DIR="$HOME/.local/state/exocortex"
 LOG_DIR="$HOME/logs/synchronizer"
 LOG_FILE="$LOG_DIR/scheduler-$(date +%Y-%m-%d).log"
 
-ROLES_DIR="/home/vps/IWE/DS-exocortex/roles"
+ROLES_DIR="/home/vps/IWE/FMT-exocortex-template/roles"
 NOTIFY_SH="$SCRIPT_DIR/notify.sh"
 
 # Таймаут на задачи (сек): предотвращает блокировку dispatch зависшей задачей
@@ -81,7 +81,7 @@ if ! command -v timeout &>/dev/null; then
                 waitpid($pid, 0);
                 alarm(0);
             };
-            if ($@ =~ /alarm/) { kill("TERM", $pid); sleep(1); kill("KILL", $pid); waitpid($pid, WNOHANG); exit(125); }
+            if ($@ =~ /alarm/) { kill("TERM", $pid); sleep(1); kill("KILL", $pid); waitpid($pid, WNOHANG); exit(124); }
             exit($? >> 8);
         ' "$duration" "$@"
     }
@@ -153,11 +153,7 @@ pre_archive_dayplan() {
     done
 
     if [ "$moved" -gt 0 ]; then
-        # Попробуем сначала простой pull, если он не сработает, тогда используем rebase
-        if ! git -C "$strategy_dir" pull 2>/dev/null; then
-            # Если обычный pull не работает, пробуем rebase
-            git -C "$strategy_dir" pull --rebase 2>/dev/null || true
-        fi
+        git -C "$strategy_dir" pull --rebase 2>/dev/null || true
         # ВАЖНО: добавляем ТОЛЬКО перемещённые файлы, не всю директорию.
         # `git add current/` может подхватить грязные unstaged файлы (баг 21 мар 2026).
         git -C "$strategy_dir" add -- archive/day-plans/ 2>/dev/null || true
@@ -198,8 +194,8 @@ dispatch() {
         ran=1
     fi
 
-    # --- Стратег: morning (05:00-21:59) ---
-    if (( 10#$HOUR >= 5 && 10#$HOUR < 22 )) && ! ran_today "strategist-morning"; then
+    # --- Стратег: morning (04:00-21:59) ---
+    if (( 10#$HOUR >= 4 && 10#$HOUR < 22 )) && ! ran_today "strategist-morning"; then
         log "→ strategist morning (catch-up: hour=$HOUR)"
         if timeout "$TASK_TIMEOUT_LONG" "$STRATEGIST_SH" morning >> "$LOG_FILE" 2>&1; then
             mark_done "strategist-morning"
