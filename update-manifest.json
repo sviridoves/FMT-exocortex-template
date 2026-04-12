@@ -1,5 +1,5 @@
 {
-  "version": "0.21.1",
+  "version": "0.24.0",
   "description": "Манифест платформенных файлов DS-exocortex. Используется update.sh для доставки обновлений.",
   "files": [
     {"path": ".claude/hooks/close-gate-reminder.sh"},
