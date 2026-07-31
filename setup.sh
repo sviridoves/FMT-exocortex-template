@@ -676,10 +676,38 @@ else
     echo "[4e] Generating executor-catalog.yaml..."
     if CATALOG_OUTPUT=$(IWE_GOVERNANCE_REPO="$GOVERNANCE_REPO" python3 "$TEMPLATE_DIR/scripts/generate-executor-catalog.py" 2>&1); then
         echo "$CATALOG_OUTPUT" | sed 's/^/  /'
+    elif echo "$CATALOG_OUTPUT" | grep -q "No module named 'yaml'"; then
+        # Голая Ubuntu/Debian не тащит PyYAML в system python3 (issue найден живым
+        # прогоном WP-5, 2026-07-27) — сырой traceback пугает новичка без подсказки.
+        echo "  ⚠ executor-catalog.yaml не сгенерирован — не хватает библиотеки PyYAML для python3."
+        if [ "$(uname)" = "Linux" ]; then
+            echo "    Установи: sudo apt install python3-yaml (или: pip3 install pyyaml, если pip3 уже стоит)"
+        else
+            echo "    Установи: pip3 install pyyaml"
+        fi
+        echo "    Потом выполни вручную:"
+        echo "    python3 $TEMPLATE_DIR/scripts/generate-executor-catalog.py"
     else
         echo "$CATALOG_OUTPUT" | sed 's/^/  /'
         echo "  ⚠ executor-catalog.yaml не сгенерирован — запусти вручную:"
         echo "    python3 $TEMPLATE_DIR/scripts/generate-executor-catalog.py"
+    fi
+fi
+
+# === 4f. Regenerate hot-files.list for the actual governance repo (issue #294/#291) ===
+# The repo ships hot-files.list pre-baked with the author's GOVERNANCE_REPO name —
+# without regenerating here, verify-context-budget.sh reports MISSING on any install
+# where GOVERNANCE_REPO differs from the author's.
+if $DRY_RUN; then
+    echo "[DRY RUN] Would regenerate hot-files.list (IWE_GOVERNANCE_REPO=$GOVERNANCE_REPO)"
+else
+    echo "[4f] Regenerating hot-files.list..."
+    if HOTFILES_OUTPUT=$(IWE_ROOT="$WORKSPACE_DIR" IWE_GOVERNANCE_REPO="$GOVERNANCE_REPO" bash "$TEMPLATE_DIR/scripts/generate-hot-files-list.sh" 2>&1); then
+        echo "$HOTFILES_OUTPUT" | sed 's/^/  /'
+    else
+        echo "$HOTFILES_OUTPUT" | sed 's/^/  /'
+        echo "  ⚠ hot-files.list не пересобран — запусти вручную:"
+        echo "    IWE_GOVERNANCE_REPO=$GOVERNANCE_REPO bash $TEMPLATE_DIR/scripts/generate-hot-files-list.sh"
     fi
 fi
 
@@ -755,12 +783,33 @@ elif $DRY_RUN; then
     fi
 else
     if [ -d "$STRATEGY_TEMPLATE" ]; then
+        # bug (issue #305): $MY_STRATEGY_DIR can exist as a plain non-git dir on a
+        # rerun after a prior failed setup.sh left it via the "seed/strategy not
+        # found" fallback below (mkdir -p .../{current,inbox,...}). `cp -r src dst`
+        # then nests src INSIDE an existing dst instead of merging — reproduces the
+        # reported "DS-strategy/strategy/..." double-nesting. Fail loud instead of
+        # silently producing a broken layout; `cp -r src/. dst/` copies contents
+        # correctly whether dst pre-exists (empty, after this guard) or not.
+        if [ -d "$MY_STRATEGY_DIR" ] && [ -n "$(ls -A "$MY_STRATEGY_DIR" 2>/dev/null)" ]; then
+            echo "  ERROR: $MY_STRATEGY_DIR already exists and is not a git repo (partial/failed prior run?)."
+            echo "  Fix: inspect and clean it up (or rename it aside), then re-run setup.sh."
+            exit 1
+        fi
         # Copy my-strategy template into its own repo
-        cp -r "$STRATEGY_TEMPLATE" "$MY_STRATEGY_DIR"
+        mkdir -p "$MY_STRATEGY_DIR"
+        cp -r "$STRATEGY_TEMPLATE"/. "$MY_STRATEGY_DIR"/
         cd "$MY_STRATEGY_DIR"
         git init
         git add -A
         git commit -m "Initial exocortex: DS-strategy governance hub"
+
+        # Enable secrets-check pre-commit hook (issue #317: install-iwe-paths.sh
+        # runs at step [4d], before this repo exists — its auto-enable loop can't
+        # see it on first setup.sh run, and update.sh never calls that script).
+        if [ -d "$MY_STRATEGY_DIR/.githooks" ]; then
+            git config core.hooksPath .githooks 2>/dev/null && \
+                echo "  Pre-commit hook enabled (.githooks/)" || true
+        fi
 
         if ! $CORE_ONLY; then
             # Create GitHub repo (full mode only)
@@ -787,8 +836,8 @@ else
     fi
 fi
 
-# === 7. Clone Base repos (FPF + SPF) ===
-echo "[7/7] Installing Base repos (FPF, SPF)..."
+# === 7. Clone Base repos (ZP + FPF + SPF) ===
+echo "[7/7] Installing Base repos (ZP, FPF, SPF)..."
 if $CORE_ONLY; then
     echo "  пропущено (core mode)"
 elif ! command -v gh >/dev/null 2>&1; then
@@ -812,6 +861,7 @@ else
         fi
     }
 
+    clone_base_repo "ZP" "TserenTserenov/ZP"
     clone_base_repo "FPF" "ailev/FPF"
     clone_base_repo "SPF" "TserenTserenov/SPF"
 fi

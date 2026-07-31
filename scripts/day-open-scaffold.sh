@@ -26,21 +26,14 @@ set -uo pipefail
 
 # Load unified environment: WORKSPACE_DIR, IWE_ROOT, IWE_SCRIPTS, etc.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# iwe-env-bootstrap.sh sets its own top-level SCRIPT_DIR when sourced below, clobbering
-# ours — save this script's own directory under a distinct name first (issue #262).
 TEMPLATE_SCRIPTS_DIR="$SCRIPT_DIR"
-# Bootstrap sets IWE_ROOT/WORKSPACE_DIR/etc. It may be ABSENT on some hosts — tsekh-1's
-# extension sync does not copy .claude/lib/ — so source it only if present and never let
-# its absence abort the scaffold (the old `|| exit 1` killed every run on tsekh-1, which
-# is why the night generator always fell back to free-form synthesis).
-if [ -f "$SCRIPT_DIR/../.claude/lib/iwe-env-bootstrap.sh" ]; then
-  source "$SCRIPT_DIR/../.claude/lib/iwe-env-bootstrap.sh" || exit 1
-fi
-# Derive the essentials the scaffold + its helpers rely on. Bootstrap exports IWE_ROOT,
-# but the script uses $IWE; a clean caller (launchd / pipeline subprocess) exports
-# neither, so under `set -u` $IWE tripped «unbound variable» a few lines down.
-IWE_ROOT="${IWE_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
-IWE="${IWE:-$IWE_ROOT}"
+source "$TEMPLATE_SCRIPTS_DIR/lib/common.sh"
+# issue #329: old fallback assumed $SCRIPT_DIR/.. is always the workspace root —
+# false for a promoted copy at <governance-repo>/scripts/, which doubled the repo
+# name into every path. iwe_resolve_root() uses env-var precedence instead of
+# script-location guessing.
+IWE="$(iwe_resolve_root)"
+IWE_ROOT="$IWE"
 export IWE_ROOT IWE
 DATE="${1:-$(date +%Y-%m-%d)}"
 CONFIG="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/day-rhythm-config.yaml"
@@ -613,8 +606,11 @@ render_iwe_status() {
   last_feedback_triage_log=$(ls -t "$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/logs/feedback-triage"*.log 2>/dev/null | head -1 || echo "")
   # issue #261: старая маска ловила только legacy-метки (iwe.scheduler и т.п.), под которые
   # не попадают ни current per-role юниты, ни даже шаблонный com.exocortex.scheduler.plist.
+  # WP-5 Ubuntu-audit факт #4: launchctl unconditionally also meant Linux always saw this
+  # as false (launchctl doesn't exist there) — iwe_scheduler_active() (lib/common.sh)
+  # branches launchd/systemd by what's actually on PATH.
   local has_launchd_unit=false
-  if launchctl list 2>/dev/null | grep -qE "com\.(exocortex\.scheduler|strategist\.morning|strategist\.weekreview|extractor\.inbox-check)"; then
+  if iwe_scheduler_active; then
     has_launchd_unit=true
   fi
 
@@ -649,6 +645,14 @@ render_iwe_status() {
     else
       echo "| Scheduler/триаж | 🟡 | Mode B: feedback-triage зарегистрирован, но лог не обновлялся ${last_log_age_days}д — возможно cron skipped |"
     fi
+  elif [ "$has_launchd_unit" = "true" ] && [ -z "$last_watchdog_log" ] && [ -z "$last_feedback_triage_log" ]; then
+    # issue #292 follow-up to #261: юнит(ы) планировщика зарегистрированы (кто-то
+    # разворачивал роли на этой машине), но НИ ОДНОГО лога feedback-triage не было
+    # НИКОГДА (не только сегодня/недавно — ls -t по всей истории пуст). Это не
+    # «cron не отработал» (Mode A), это «роль feedback-triage не развёрнута на
+    # этой инсталляции» — отсутствие роли не авария, ⚪. Настоящий Mode A (cron
+    # infra целиком отсутствует) остаётся ниже, под has_launchd_unit=false.
+    echo "| Scheduler/триаж | ⚪ | роль feedback-triage не развёрнута на этой машине (юнит планировщика есть, логов триажа не было никогда) |"
   else
     # Mode A: cron не запущен (нет юнита в launchctl) + нет свежих логов
     local last_log_age_days="∞"
@@ -659,9 +663,15 @@ render_iwe_status() {
     fi
     echo "| Scheduler/триаж | 🔴 | **Mode A** (cron не отработал): юнит feedback-triage не зарегистрирован в launchctl, последний лог ${last_log_age_days}д назад |"
 
-    # Auto-create incident-файл если ещё нет за сегодня
+    # Auto-create incident-файл если ещё нет за сегодня И не подавлен явно (issue
+    # #292: имя файла содержит дату — [ ! -f incident_file ] никогда не срабатывало
+    # на «сегодня другая дата» повторно, `status: deferred` в файле вчерашней даты
+    # не переживал смену даты. Отдельный маркер без даты — переживает.
+    local incident_suppress="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox/.incident-suppress-scheduler-cron-not-fired"
     local incident_file="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox/INCIDENT-scheduler-cron-not-fired-$DATE.md"
-    if [ ! -f "$incident_file" ]; then
+    if [ -f "$incident_suppress" ]; then
+      echo "  (инцидент подавлен: $incident_suppress — удалите файл, чтобы возобновить авто-создание)"
+    elif [ ! -f "$incident_file" ]; then
       mkdir -p "$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox"
       cat > "$incident_file" <<INCEOF
 ---
@@ -693,8 +703,13 @@ auto_generated: true
 
 ## Auto-generation note
 
-Этот файл создан автоматически day-open-scaffold.sh при каждом обнаружении Mode A.
-Если решено отложить fix — поставить \`status: deferred\` и убрать \`auto_generated\` поле, чтобы скаффолд не перезаписывал контекст.
+Этот файл создан автоматически day-open-scaffold.sh при каждом обнаружении Mode A — имя файла содержит дату, поэтому завтрашний Mode A создаст НОВЫЙ файл с новой датой независимо от того, что вы сделаете с этим (правка frontmatter внутри датированного файла не переживает смену даты — issue #292).
+
+Если решено отложить fix и не получать новый инцидент-файл каждый день — создайте маркер:
+\`\`\`bash
+touch "\${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox/.incident-suppress-scheduler-cron-not-fired"
+\`\`\`
+Удалите маркер, чтобы возобновить авто-создание.
 INCEOF
     fi
   fi
@@ -722,10 +737,13 @@ INCEOF
   # issue #241 (остаточная дыра): вызов делает сетевой ls-remote/fetch внутри —
   # без тайм-бокса тот же класс зависания на WSL2 воспроизводится даже после
   # фикса a3d0b95 (тот фикс закрыл только gh issue list ниже по heredoc).
+  # issue #278: полный --check без --fast сравнивает 500+ файлов построчно —
+  # заведомо не укладывается в тайм-бокс, обновление тихо теряется как "проверено".
+  # --fast (issue #230) сравнивает только версию манифеста — секунда вместо минут.
   if [ -d "$IWE/FMT-exocortex-template" ]; then
     local upd_status
     upd_status=$(run_bounded "${ISSUE_SWEEP_TIMEOUT:-10}" bash -c \
-      "cd '$IWE/FMT-exocortex-template' && bash update.sh --check 2>&1 | grep -oE '[0-9]+ обновлен|нет обновлен|актуал' | head -1")
+      "cd '$IWE/FMT-exocortex-template' && bash update.sh --check --fast 2>&1 | grep -oE 'Версия совпадает|Версия отличается' | head -1")
     echo "| Update IWE | 🟢 | ${upd_status:-проверено} |"
   fi
 
@@ -798,7 +816,7 @@ render_gate_metrics() {
     echo "> Лог gate-решений не найден: \`$log\`"
     echo "> Запустите \`iwe-agent-dispatcher.py\` или \`overnight-auditor.sh\`, чтобы появились данные."
   else
-    bash "$script" "$log" 2>/dev/null || echo "> ⚠️ gate-metrics.sh завершился с ошибкой"
+    bash "$script" "$log" "$DATE" 2>/dev/null || echo "> ⚠️ gate-metrics.sh завершился с ошибкой"
   fi
   echo ""
   echo "</details>"
@@ -837,8 +855,14 @@ render_content_cleanup() {
     echo "> Реестр сигналов очистки базы знаний не настроен."
     return
   fi
+  # Only CC-entries before the first "## Архив"/"## Разобрано" heading are open --
+  # resolved entries move under those headings but their <summary> line itself never
+  # gets a ✅ marker (only a prose note in "## Метрики"), so filtering on ✅ alone
+  # kept surfacing months-old closed signals as "N на разбор" (found 2026-07-28: CC-103,
+  # closed 2026-06-14, still showed up because its heading had no ✅).
   local open
-  open=$(grep -E '<summary><strong>CC-[0-9]' "$file" | grep -v '✅' || true)
+  open=$(awk '/^## (Архив|Разобрано)/{exit} {print}' "$file" \
+    | grep -E '<summary><strong>CC-[0-9]' || true)
   if [ -z "$open" ]; then
     echo "> Разобрано — открытых сигналов нет."
     return
@@ -1016,7 +1040,10 @@ render_compact_dashboard() {
 
   # Светофор — критические позиции
   echo "**IWE за ночь:**"
-  echo "  Scheduler: $(launchctl list 2>/dev/null | grep -qE 'iwe\.(scheduler|feedback)' && echo '🟢' || echo '🔴 не запущен')"
+  # WP-5 Ubuntu-audit факт #4: this used the same pre-#261 legacy label regex as
+  # the OTHER launchctl check in this file (fixed above) — AND was unconditional
+  # launchctl, so Linux always read 🔴 regardless of the actual systemd timers.
+  echo "  Scheduler: $(iwe_scheduler_active && echo '🟢' || echo '🔴 не запущен')"
   local fpf_status fpf_fetch_ok
   # issue #241 (остаточная дыра): та же незащищённая git fetch, тот же класс зависания.
   # run_bounded не пробрасывает exit-код — результат передаём через маркер в stdout.

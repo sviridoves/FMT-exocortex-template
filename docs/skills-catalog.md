@@ -1,6 +1,6 @@
 # Каталог скиллов IWE
 
-> Автогенерировано `scripts/generate-catalogs.py` · 2026-07-18 · НЕ редактировать вручную.
+> Автогенерировано `scripts/generate-catalogs.py` · 2026-07-23 · НЕ редактировать вручную.
 > Источник: `.claude/skills/*/SKILL.md`. Скилл вызывается командой `/<id>`.
 
 | Скилл | Что делает |
@@ -36,7 +36,7 @@
 | `/pack-creator` | Guide a PACK-X author through the SPF fill cycle 01-11. Calls R28 Diagnostician to select mode (assembly/hybr… |
 | `/pack-new` | Create a new Pack — guided flow through SPF: choose domain, name Pack, scaffold structure, fill roadmap. |
 | `/peer-conversation` | Многотуровый диалог писателя (Claude) с напарником (Kimi) по задаче пилота (DP.SC.154). Ведёт turn-loop, обна… |
-| `/personal-guide-render` | Тонкий клиент — собирает персональное руководство пилота через локальный шлюз (mcp__iwe-local-gateway__render… |
+| `/personal-guide-render` | Руководство собирается автоматически на сервере платформы по расписанию; скилл проверяет доставку и объясняет состояние (ручной пересбор — после выхода серверного инструмента) |
 | `/personal-guide-start` | Bootstrap wrapper — creates an empty personal-guide repo under the pilot's account (flat name, no login in th… |
 | `/platform-bottleneck` | Скилл IWE — см. тело файла |
 | `/restore-exocortex` | Restore IWE memory from an exocortex backup on a new device or after data loss — NL wrapper around restore-fr… |
@@ -48,10 +48,11 @@
 | `/transcribe` | Transcribe audio/video files via MLX Whisper (Apple Silicon). Usage: /transcribe path/to/file.mp3 |
 | `/vdv` | ВДВ-скилл — генератор и аудитор описания стадийного процесса по 6 принципам Вход·Действие·Выход. Используй дл… |
 | `/verify` | Верификация артефакта по эталону из Pack. Загружает роль VR.R.001 (Верификатор) с context isolation — проверя… |
+| `/verify-hypotheses` | Сверка журнала гипотез (hypotheses-log.md) по запросу вне ритма week-close. Фильтрует записи со статусом «на… |
 | `/w-reflection` | Записать W-рефлексию (мировоззренческий слот RCS) в learning.w_reflections. Используется Диагностом R28 (MIM.… |
 | `/week-close` | Протокол закрытия недели (Week Close). Ретро 7 дней + carry-over в новую неделю + платформенные шаги (бэкап,… |
 | `/week-close-pilot` | Run the pilot-facing Week Close protocol with progress review and carry-over. |
 | `/wp-new` | Создание нового рабочего продукта (РП) с записью в 5 мест атомарно. Используй когда появляется новая задача,… |
 
-_Всего скиллов: 47_
+_Всего скиллов: 48_
 
