@@ -332,6 +332,108 @@ fi
 
 echo ""
 
+# ---------- Раздел 3b: Promoted-copy drift (issue #347, раскладка — issue #582) ----------
+#
+# CI's check-seed-drift.sh holds scripts/ ↔ seed/strategy/scripts/ INSIDE the
+# template, but the EXECUTED copy lives on the user machine where CI cannot see
+# it. The audit runs exactly where both sides physically exist — compare here.
+# Which copy counts as "installed" depends on the layout: Day Open skills invoke
+# the pipeline through $IWE_SCRIPTS (iwe-env-bootstrap.sh default: template
+# scripts/). Installations that promoted copies into the governance repo point
+# IWE_SCRIPTS at $GOV_REPO/scripts instead. So the drift check compares seed
+# against the copy that actually runs ($IWE_SCRIPTS) — requiring a governance
+# copy on a template-layout install was a false "incomplete pipeline" (issue
+# #582). All three files must be checked, absence included: a missing
+# lib/common.sh breaks the scaffold just as silently as a stale one (the
+# scaffold sources it with FATAL on absence).
+# The seed copies carry a "# SNAPSHOT — …" marker line (see
+# check-seed-drift.sh): byte-identity holds only after stripping that one
+# line, so the comparison below strips it too — plain cmp would report the
+# marker itself as drift on every healthy install.
+
+echo "## 3b. Промотированные копии Day Open (seed шаблона ↔ исполняемая копия)"
+echo ""
+SEED_SCRIPTS="$IWE_ROOT/FMT-exocortex-template/seed/strategy/scripts"
+SEED_SNAPSHOT_MARKER="# SNAPSHOT — synced manually via script-promote.sh from FMT-exocortex-template/scripts/. Do not edit here directly."
+# Физические пути (симлинки разрешены), чтобы алиас одного каталога не
+# читался как «другая копия».
+EXEC_SCRIPTS="$(cd "${IWE_SCRIPTS:-/nonexistent}" 2>/dev/null && pwd -P || true)"
+SEED_SCRIPTS_PHYSICAL="$(cd "$SEED_SCRIPTS" 2>/dev/null && pwd -P || true)"
+IWE_SCRIPTS_DISPLAY="${IWE_SCRIPTS:-<не задан>}"
+if [ ! -d "$SEED_SCRIPTS" ]; then
+    echo "_N/A — шаблон с seed/strategy/scripts/ не найден._"
+elif [ -z "$EXEC_SCRIPTS" ]; then
+    echo "- ❌ каталог \`IWE_SCRIPTS=$IWE_SCRIPTS_DISPLAY\` не существует — конвейер Day Open не запустится"
+    CRITICAL_MISSING=$((CRITICAL_MISSING + 1))
+elif [ "$EXEC_SCRIPTS" = "$SEED_SCRIPTS_PHYSICAL" ]; then
+    echo "_N/A — конвейер исполняется прямо из seed (\`$IWE_SCRIPTS_DISPLAY\`), отдельной копии нет._"
+else
+    PROMOTED_DRIFT=0
+    for rel in day-open-scaffold.sh day-open-pipeline.sh lib/common.sh; do
+        seed_f="$SEED_SCRIPTS/$rel"
+        inst_f="$EXEC_SCRIPTS/$rel"
+        canon_f="$IWE_ROOT/FMT-exocortex-template/scripts/$rel"
+        # Три стороны: канон (scripts/ шаблона), снимок (seed, с маркером
+        # SNAPSHOT — конвенция check-seed-drift.sh), исполняемая копия
+        # ($IWE_SCRIPTS). Оценка сторон независимая: отсутствие одной не
+        # подавляет диагностику остальных (ревью #582, раунд 3). Классификация
+        # дрейфа — по канону: сравнение только seed↔исполняемая ошибочно
+        # объявляет исполняемую копию устаревшей, когда на деле отстал снимок,
+        # и наоборот (раунд 2). `cp` из seed как совет запрещён: он перенёс бы
+        # маркерную строку в исполняемую копию, и предупреждение вернулось бы
+        # на следующем аудите (раунд 1).
+        present=0
+        if [ ! -f "$seed_f" ]; then
+            echo "- ⚠️ \`seed/strategy/scripts/$rel\` отсутствует в шаблоне — регрессия доставки seed"
+            PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+        else
+            present=$((present + 1))
+        fi
+        if [ ! -f "$inst_f" ]; then
+            echo "- ⚠️ \`$rel\` отсутствует в исполняемой копии (\`$IWE_SCRIPTS_DISPLAY\`) — конвейер Day Open неполный"
+            PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+        else
+            present=$((present + 2))
+        fi
+        if [ -f "$canon_f" ]; then
+            inst_ok=0; seed_ok=0
+            [ $((present & 2)) -eq 2 ] && diff -q "$canon_f" "$inst_f" >/dev/null 2>&1 && inst_ok=1
+            [ $((present & 1)) -eq 1 ] && diff -q <(grep -vF "$SEED_SNAPSHOT_MARKER" "$seed_f") "$canon_f" >/dev/null 2>&1 && seed_ok=1
+            if [ $((present & 2)) -eq 2 ] && [ "$inst_ok" = 0 ]; then
+                echo "- ⚠️ \`$rel\` в исполняемой копии отстал от канона шаблона — обновить: \`cp \"$canon_f\" \"$inst_f\"\` (свои правки в копии сначала сохранить)"
+                PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+            fi
+            if [ $((present & 1)) -eq 1 ] && [ "$seed_ok" = 0 ]; then
+                echo "- ⚠️ \`seed/strategy/scripts/$rel\` отстал от \`scripts/$rel\` — обновить снимок: \`bash \"$IWE_ROOT/FMT-exocortex-template/scripts/check-seed-drift.sh\" --fix\`"
+                PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+            fi
+            if [ "$present" = 3 ] && [ "$inst_ok" = 1 ] && [ "$seed_ok" = 1 ]; then
+                echo "- ✅ \`$rel\` совпадает с каноном шаблона (seed-снимок синхронен)"
+            fi
+        else
+            # Отсутствие канона — само по себе регрессия доставки шаблона,
+            # даже если оставшиеся копии совпадают (ревью #582, раунд 4).
+            echo "- ⚠️ канонический \`scripts/$rel\` отсутствует в шаблоне — регрессия доставки"
+            PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+            if [ "$present" = 3 ]; then
+                # Единственное оставшееся осмысленное сравнение: снимок
+                # (без маркера) ↔ исполняемая копия.
+                if diff -q <(grep -vF "$SEED_SNAPSHOT_MARKER" "$seed_f") "$inst_f" >/dev/null 2>&1; then
+                    echo "- ✅ \`$rel\` совпадает с seed (канон scripts/ недоступен)"
+                else
+                    echo "- ⚠️ \`$rel\` в исполняемой копии разошёлся с seed шаблона, канонический \`scripts/$rel\` не найден — сверить вручную"
+                    PROMOTED_DRIFT=$((PROMOTED_DRIFT + 1))
+                fi
+            fi
+        fi
+    done
+    if [ "$PROMOTED_DRIFT" -gt 0 ]; then
+        OPTIONAL_MISSING=$((OPTIONAL_MISSING + PROMOTED_DRIFT))
+    fi
+fi
+
+echo ""
+
 # ---------- Раздел 4: User customizations (L3) ----------
 #
 # L3 живёт в 3-х местах: extensions/, params.yaml (отличия от skeleton),
@@ -382,11 +484,15 @@ echo ""
 echo "### params.yaml — отличия от шаблона"
 echo ""
 PARAMS_USER="$IWE_ROOT/params.yaml"
-PARAMS_TEMPLATE="$IWE_ROOT/FMT-exocortex-template/params.yaml"
+# issue #348: эталон переехал в params.yaml.example — рабочий params.yaml внутри
+# шаблона больше не трекается. Старое имя остаётся запасным вариантом: на установке,
+# обновлённой не полностью, рядом может лежать прежний файл.
+PARAMS_TEMPLATE="$IWE_ROOT/FMT-exocortex-template/params.yaml.example"
+[ -f "$PARAMS_TEMPLATE" ] || PARAMS_TEMPLATE="$IWE_ROOT/FMT-exocortex-template/params.yaml"
 if [ ! -f "$PARAMS_USER" ]; then
     echo "_params.yaml не найден — конфигурация не инициализирована_"
 elif [ ! -f "$PARAMS_TEMPLATE" ]; then
-    echo "_FMT-exocortex-template/params.yaml не найден — сравнение невозможно_"
+    echo "_FMT-exocortex-template/params.yaml.example не найден — сравнение невозможно_"
 else
     set +e
     # Игнорируем комментарии и пустые строки при сравнении
@@ -489,6 +595,86 @@ for bin in git curl python3; do
 done
 echo ""
 
+echo "### Доступная память"
+echo ""
+# issue #461 (РП-7 Ф76): PreToolUse hook timeouts на живой установке диагностировались
+# как "хук не ответил", хотя замер (4 хука на пути Edit/Write, суммарно ~1,2с при
+# таймауте в десятки секунд) исключил хуки как причину — реальная причина оказалась
+# голоданием по памяти хост-процесса. Проактивная проверка ловит это ДО того, как
+# отказ проявится посреди ритуала, а не только задним числом в тексте ошибки.
+# Capability-based: PSI (/proc/pressure/memory) — Linux cgroup v2 механизм без
+# кроссплатформенного эквивалента (пир-сессия 2026-08-18-08-wp7-f75-f76-smoke-memory,
+# консенсус с Codex) — macOS получает RAM/swap через vm_stat/sysctl без PSI-аналога,
+# не притворный суррогат.
+MEM_WARN_THRESHOLD_PCT=15  # свободно < 15% от total — предупреждение, не жёсткий блок
+case "$(uname)" in
+    Linux)
+        if [ -r /proc/meminfo ]; then
+            MEM_TOTAL_KB=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+            MEM_AVAIL_KB=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo)
+            if [ -n "$MEM_TOTAL_KB" ] && [ -n "$MEM_AVAIL_KB" ] && [ "$MEM_TOTAL_KB" -gt 0 ]; then
+                MEM_AVAIL_PCT=$((MEM_AVAIL_KB * 100 / MEM_TOTAL_KB))
+                MEM_TOTAL_GIB=$(awk -v kb="$MEM_TOTAL_KB" 'BEGIN{printf "%.1f", kb/1024/1024}')
+                MEM_AVAIL_GIB=$(awk -v kb="$MEM_AVAIL_KB" 'BEGIN{printf "%.1f", kb/1024/1024}')
+                if [ "$MEM_AVAIL_PCT" -lt "$MEM_WARN_THRESHOLD_PCT" ]; then
+                    echo "⚠️ Свободно ${MEM_AVAIL_GIB} ГиБ из ${MEM_TOTAL_GIB} ГиБ (${MEM_AVAIL_PCT}%) — ниже порога ${MEM_WARN_THRESHOLD_PCT}%. Отказы инструментов записи/чтения с сообщением \`PreToolUse hook did not respond\` при таком уровне памяти — известный класс (issue #461), не обязательно проблема хуков."
+                    UPD_WARN=$((UPD_WARN + 1))
+                else
+                    echo "✅ Свободно ${MEM_AVAIL_GIB} ГиБ из ${MEM_TOTAL_GIB} ГиБ (${MEM_AVAIL_PCT}%)"
+                fi
+            else
+                echo "ℹ️ Не удалось разобрать \`/proc/meminfo\` (MemTotal/MemAvailable)."
+            fi
+            if [ -r /proc/pressure/memory ]; then
+                PSI_SOME=$(awk '/^some/{for(i=1;i<=NF;i++) if ($i ~ /^avg60=/) print $i}' /proc/pressure/memory | cut -d= -f2)
+                if [ -n "$PSI_SOME" ]; then
+                    echo "ℹ️ Memory pressure (PSI avg60, some): ${PSI_SOME}%"
+                fi
+            fi
+        else
+            echo "ℹ️ \`/proc/meminfo\` недоступен — проверка памяти пропущена."
+        fi
+        ;;
+    Darwin)
+        set +e
+        MEM_TOTAL_BYTES=$(sysctl -n hw.memsize 2>/dev/null)
+        VM_STAT_OUT=$(vm_stat 2>/dev/null)
+        set -e
+        if [ -n "$MEM_TOTAL_BYTES" ] && [ "$MEM_TOTAL_BYTES" -gt 0 ] && [ -n "$VM_STAT_OUT" ]; then
+            PAGE_SIZE=$(echo "$VM_STAT_OUT" | head -1 | grep -oE '[0-9]+' | head -1)
+            PAGE_SIZE=${PAGE_SIZE:-4096}
+            PAGES_FREE=$(echo "$VM_STAT_OUT" | awk '/Pages free:/{gsub(/\./,"",$3); print $3}')
+            PAGES_INACTIVE=$(echo "$VM_STAT_OUT" | awk '/Pages inactive:/{gsub(/\./,"",$3); print $3}')
+            if [ -n "$PAGES_FREE" ] && [ -n "$PAGES_INACTIVE" ]; then
+                MEM_AVAIL_BYTES=$(( (PAGES_FREE + PAGES_INACTIVE) * PAGE_SIZE ))
+                MEM_AVAIL_PCT=$((MEM_AVAIL_BYTES * 100 / MEM_TOTAL_BYTES))
+                MEM_TOTAL_GIB=$(awk -v b="$MEM_TOTAL_BYTES" 'BEGIN{printf "%.1f", b/1024/1024/1024}')
+                MEM_AVAIL_GIB=$(awk -v b="$MEM_AVAIL_BYTES" 'BEGIN{printf "%.1f", b/1024/1024/1024}')
+                if [ "$MEM_AVAIL_PCT" -lt "$MEM_WARN_THRESHOLD_PCT" ]; then
+                    echo "⚠️ Свободно+inactive ${MEM_AVAIL_GIB} ГиБ из ${MEM_TOTAL_GIB} ГиБ (${MEM_AVAIL_PCT}%) — ниже порога ${MEM_WARN_THRESHOLD_PCT}%. Отказы инструментов записи/чтения с сообщением \`PreToolUse hook did not respond\` при таком уровне памяти — известный класс (issue #461), не обязательно проблема хуков."
+                    UPD_WARN=$((UPD_WARN + 1))
+                else
+                    echo "✅ Свободно+inactive ${MEM_AVAIL_GIB} ГиБ из ${MEM_TOTAL_GIB} ГиБ (${MEM_AVAIL_PCT}%)"
+                fi
+            else
+                echo "ℹ️ Не удалось разобрать вывод \`vm_stat\` (Pages free/inactive)."
+            fi
+        else
+            echo "ℹ️ \`sysctl hw.memsize\`/\`vm_stat\` недоступны — проверка памяти пропущена."
+        fi
+        set +e
+        SWAP_USED=$(sysctl -n vm.swapusage 2>/dev/null | grep -oE 'used = [0-9.]+[MG]' | grep -oE '[0-9.]+[MG]')
+        set -e
+        if [ -n "$SWAP_USED" ]; then
+            echo "ℹ️ Своп использован: ${SWAP_USED}"
+        fi
+        ;;
+    *)
+        echo "ℹ️ Проверка памяти не реализована для платформы $(uname)."
+        ;;
+esac
+echo ""
+
 echo "### Конфигурация (.exocortex.env)"
 echo ""
 # WP-273: setup.sh ≥0.7.0 сохраняет .exocortex.env в $IWE_ROOT/, не в $HOME/
@@ -539,6 +725,56 @@ else
     fi
 fi
 echo ""
+
+# WP-5 F57: the author's usage instruction (FPF/USING-FPF.md) reaches an
+# installation only through its FPF copy, which update.sh fast-forwards. A copy
+# that is missing, older than the instruction, or behind the server means agents
+# quote FPF from memory. Warning only: the copy is optional infrastructure.
+# Commit age alone proves neither staleness (the author may simply not have
+# published) nor freshness (a copy can be days behind a recent tip), so age is
+# reported as a hint and lag is measured against the last known server state.
+report_fpf_copy_state() {
+    local fpf="$IWE_ROOT/FPF" commit_ts now_ts age_days behind
+
+    echo "### Состояние копии FPF"
+    echo ""
+    # .git is a file, not a directory, in a linked worktree or a submodule.
+    if [ ! -e "$fpf/.git" ]; then
+        echo "⚠️ Копия \`FPF/\` не найдена — скилл \`/fpf\` не сможет читать полный текст. Решение: \`bash update.sh\` или клонировать ailev/FPF в \`FPF/\`."
+        UPD_WARN=$((UPD_WARN + 1))
+        echo ""
+        return 0
+    fi
+    if [ -f "$fpf/USING-FPF.md" ]; then
+        echo "✅ \`FPF/USING-FPF.md\` (инструкция автора) на месте"
+    else
+        echo "⚠️ В копии FPF нет \`USING-FPF.md\` — копия старее инструкции автора. Решение: \`bash update.sh\` (обновит копию) или \`git -C FPF pull --ff-only\`, если в копии нет своих правок."
+        UPD_WARN=$((UPD_WARN + 1))
+    fi
+    behind=$(git -C "$fpf" rev-list --count 'HEAD..@{u}' 2>/dev/null || echo "")
+    if [ -n "$behind" ] && [ "$behind" -gt 0 ]; then
+        echo "⚠️ Копия FPF отстаёт от известного состояния сервера на $behind коммит(ов) (по данным последнего получения обновлений). Решение: \`bash update.sh\`."
+        UPD_WARN=$((UPD_WARN + 1))
+    fi
+    commit_ts=$(git -C "$fpf" log -1 --format=%ct 2>/dev/null || echo 0)
+    now_ts=$(date +%s)
+    if [ "${commit_ts:-0}" -le 0 ]; then
+        echo "⚠️ Не удалось прочитать дату последнего коммита копии FPF."
+        UPD_WARN=$((UPD_WARN + 1))
+    else
+        age_days=$(( (now_ts - commit_ts) / 86400 ))
+        [ "$age_days" -lt 0 ] && age_days=0
+        if [ "$age_days" -gt 30 ]; then
+            echo "⚠️ Последний коммит копии FPF старше 30 дней ($age_days дн.) — возможно, копия устарела (или автор давно ничего не публиковал). Решение: \`bash update.sh\`."
+            UPD_WARN=$((UPD_WARN + 1))
+        elif [ -z "$behind" ] || [ "$behind" -eq 0 ]; then
+            echo "✅ Копия FPF свежая (последний коммит $age_days дн. назад)"
+        fi
+    fi
+    echo ""
+}
+
+report_fpf_copy_state
 
 if [ $UPD_FAIL -gt 0 ]; then
     echo "**Вердикт раздела:** ❌ $UPD_FAIL критичных предусловия не выполнены — \`update.sh\` упадёт без них."
@@ -625,7 +861,7 @@ echo ""
 # root-owned объекты — последующий pull под обычным юзером падает с
 # "insufficient permission for adding an object to repository database".
 #
-# Источник: 11→12 мая 2026, dirty pull-repos warnings на tsekh-1 — корень оказался
+# Источник: 11→12 мая 2026, dirty pull-repos warnings на удалённом сервере пилота — корень оказался
 # в root-owned .git/objects после ssh-as-root команд из mac.
 #
 # Релевантно для Linux (где ssh может ходить под разными user). На macOS обычно

@@ -1,5 +1,5 @@
 ---
-valid_from: 2026-08-02
+valid_from: 2026-10-11
 originSessionId: 9a0e726a-951e-4408-9e02-94d7eeffbf74
 
 type: reference
@@ -8,15 +8,15 @@ domains: [reference]
 status: active
 owner: user
 schema_version: 1
-fpf_version: "9a9a42e4d154021ca3f7415e0009a4214832f65f"
-fpf_synced_at: 2026-08-02
+fpf_version: "e2c6ac1e97dae9b9f54f707477f7d86a12d91852"
+fpf_synced_at: 2026-10-11
 
 name: "fpf-reference"
-description: "Справочник FPF паттернов применимых в IWE: структура, ключевые Part C (C.11-C.28), трансляция терминов"
+description: "Справочник FPF паттернов применимых в IWE: состав экосистемы (Core + DPF-сьюты), ключевые Part C (C.11-C.28), трансляция терминов"
 ---
 # FPF (First Principles Framework) — справочник
 
-> Источник: `{{HOME_DIR}}/IWE/FPF/FPF-Spec.md` (4.6 MB, ~50000 строк)
+> Источник: репозиторий `ailev/FPF`, локальная копия `{{HOME_DIR}}/IWE/FPF/`, ревизия закреплена полем `fpf_version` во frontmatter. Размер и число строк намеренно не дублируются.
 
 ## Когда читать FPF
 
@@ -28,10 +28,34 @@ description: "Справочник FPF паттернов применимых �
 ## Как читать
 
 - НЕ читать целиком
-- Сначала оглавление (первые 200 строк), потом нужную секцию
-- Grep для конкретных паттернов (например, `A.7` для Strict Distinction)
+- Сначала найти заголовок нужной части: `grep -nE '^#{1,4} .*Part [A-G]' FPF-Spec.md`
+- Затем искать точный код/заголовок паттерна (например, `grep -n 'A\.7' FPF-Spec.md`) и читать ограниченный диапазон вокруг совпадения
 
-## Структура FPF
+## Состав репозитория FPF
+
+FPF — не один файл, а ядро + комплекты доменных фреймворков (DPF). Состав соответствует `fpf_version` из frontmatter:
+
+- **FPF Core** — `FPF-Spec.md`, части Part A–G (структура ниже)
+- **Foundational Thinking DPF Suite** — `Foundational Thinking DPF Suite/`: 5 фундаментальных DPF (математическая практика, математическое моделирование, физическое, вычислительное и нотационное мышление) + `README.md` и `FOUNDATIONAL-THINKING-DPF-SUITE-REFERENCE.md`
+- **Engineering DPF Suite** — `Engineering DPF Suite/`: 27 доменных фреймворков (системная инженерия, стратегирование, инженерия методов, развитие способностей человека и др.) + `README.md` и `ENGINEERING-DPF-SUITE-REFERENCE.md`
+- **Narrativization DPF** — `Narrativization-and-Narrative-Studies-Principles-Framework.md` (нарративизация)
+
+### Точки входа в репозитории FPF
+
+- `Readme.md` — раздел «What is in this repository»: выбор публикации под задачу
+- `USING-FPF.md` — «Using FPF and its DPF Suites»: поиск паттернов по ID через rg, устройство секций паттерна, связывание методов через Suite Reference
+- В каждом сьюте: `README.md` (обзор) + `*-SUITE-REFERENCE.md` (связи между DPF сьюта)
+
+### Поиск знаний по DPF
+
+Ищи по ID паттерна по всему репозиторию, не только по Core:
+
+```bash
+rg -n 'HCD\.1' {{HOME_DIR}}/IWE/FPF        # паттерн из Engineering DPF Suite
+rg -n 'A\.7' {{HOME_DIR}}/IWE/FPF/FPF-Spec.md  # паттерн Core
+```
+
+## Структура FPF Core (FPF-Spec.md)
 
 - **Part A** — Kernel: Holon, BoundedContext, Role-Method-Work, Signature Stack
 - **Part B** — Aggregation (Γ), Trust (F-G-R), Evolution Loop
@@ -133,8 +157,8 @@ description: "Справочник FPF паттернов применимых �
 | F-G-R (Fact/Guess/Rumor) | Факт / предположение / слух — уровень доверия к данным | B.3 — оценка решений |
 | Role ≠ Method ≠ Work (A.7) | Кто делает ≠ как делает ≠ конкретное выполнение | Проектирование процессов |
 | Role Assignment (A.2.1) | Система в роли: `система#роль:контекст` — функциональное участие системы; роль сама не работает | Pack-онтология ролей, distinctions.md HD #26 |
-| Service Polysemy (A.6.8) | Сервис = обещание + провайдерская роль + метод оказания + работа оказания + свидетельства. Сервис ≠ метод | DP сервисы MAP.002 vs FPF ситуация оказания |
-| Mastery as Role (A.2) | Мастерство::роль — роль части экзокортекса/организма в деятельности. ≠ степень мастерства (характеристика) | PACK-personal cp.skl, distinctions.md HD #32 |
+| Service-word restoration (A.6.P §4.11a) | «Сервис» не задаёт один FPF-референт: восстановить обещание, роль/назначение, метод, работу, носитель, состояние, свидетельство или прямое отношение | DP сервисы MAP.002 vs точные FPF-объекты и отношения |
+| Mastery-word restoration (A.1.SCR) | `U.Mastery` не вводится: различить способность носителя, обучение/работу, оценку, характеристику качества или точный целостный носитель | PACK-personal cp.skl, distinctions.md HD #32 |
 | Alpha | Ключевой рабочий продукт, по которому отслеживается прогресс | Управление проектами |
 | Mereology | Отношение «часть-целое» между компонентами | Архитектура, composition |
 | Affordance | Что компонент позволяет делать пользователю | API design, UX |
@@ -157,4 +181,4 @@ description: "Справочник FPF паттернов применимых �
 
 ## Обновление
 
-Периодически: `cd {{HOME_DIR}}/IWE/FPF && git pull`. FPF обновляется ~раз в 2 недели (апстрим). После pull — проверить `memory/fpf-term-map.yaml` на новые переименования (WP-481 Ф11).
+Периодически: `git -C {{HOME_DIR}}/IWE/FPF pull`. FPF обновляется ~раз в 2 недели (апстрим). После pull — проверить `memory/fpf-term-map.yaml` на новые переименования (WP-481 Ф11).

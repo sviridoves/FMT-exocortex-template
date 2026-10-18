@@ -5,6 +5,7 @@ argument-hint: "[--skip-mcp] [--critical]"
 version: 1.0.0
 layer: L1
 status: active
+browser_safe: false
 triggers:
   slash: [/audit-installation]
   phrases: []
@@ -47,12 +48,30 @@ Verdict выносит subagent в роли Аудитора, читая отч�
 Найти и запустить `iwe-audit.sh` через fallback-цепочку (author-mode → workspace, user-mode → `$IWE_SCRIPTS` из `~/.iwe-paths`):
 
 ```bash
-if [ -f "$HOME/IWE/scripts/iwe-audit.sh" ]; then
-    AUDIT_SCRIPT="$HOME/IWE/scripts/iwe-audit.sh"
-elif [ -n "${IWE_SCRIPTS:-}" ] && [ -f "$IWE_SCRIPTS/iwe-audit.sh" ]; then
+# issue #688: a non-interactive top-level Bash call doesn't go through
+# .bashrc/.zshenv (interactive-shell guard) or BASH_ENV (read before the
+# harness can set it) — $IWE_SCRIPTS is unset here on plenty of real
+# installs even though ~/.iwe-paths exists and is correct. Source it
+# directly, in this same shell, before reading the variable — `.` doesn't
+# depend on interactive/BASH_ENV machinery at all.
+# issue #932: the installer writes <workspace>/.iwe-paths (install-iwe-paths.sh);
+# $HOME/.iwe-paths is the legacy location, tried last.
+IWE_PATHS="${IWE_PATHS_FILE:-}"
+if [ -z "$IWE_PATHS" ]; then
+    for _c in "${IWE_WORKSPACE:-}/.iwe-paths" "${WORKSPACE_DIR:-}/.iwe-paths" \
+              "$PWD/.iwe-paths" "${IWE_WORKSPACE:-$HOME/IWE}/.iwe-paths" "$HOME/.iwe-paths"; do
+        [ -r "$_c" ] && { IWE_PATHS="$_c"; break; }
+    done
+fi
+[ -n "$IWE_PATHS" ] && [ -r "$IWE_PATHS" ] && . "$IWE_PATHS"
+if [ -n "${IWE_SCRIPTS:-}" ] && [ -f "$IWE_SCRIPTS/iwe-audit.sh" ]; then
+    # $IWE_SCRIPTS first (#566): the hardcoded workspace copy, when it exists at
+    # all, is a stale leftover — the installer points IWE_SCRIPTS at the template.
     AUDIT_SCRIPT="$IWE_SCRIPTS/iwe-audit.sh"
+elif [ -f "${IWE_WORKSPACE:-$HOME/IWE}/scripts/iwe-audit.sh" ]; then
+    AUDIT_SCRIPT="${IWE_WORKSPACE:-$HOME/IWE}/scripts/iwe-audit.sh"
 else
-    echo "iwe-audit.sh не найден. Если \$IWE_SCRIPTS не выставлен — выполни 'source \$HOME/.iwe-paths' (или перезапусти shell), затем повтори. Если файла .iwe-paths нет — запусти setup.sh из FMT-шаблона."
+    echo "iwe-audit.sh не найден. \$IWE_PATHS ($IWE_PATHS) не даёт рабочий \$IWE_SCRIPTS — проверь, что файл существует и содержит export IWE_SCRIPTS=... (запусти setup.sh из FMT-шаблона, если файла нет)."
     exit 1
 fi
 bash "$AUDIT_SCRIPT" $([ "${ARGUMENTS:-}" = "--critical" ] && echo "--critical")
@@ -74,7 +93,9 @@ bash "$AUDIT_SCRIPT" $([ "${ARGUMENTS:-}" = "--critical" ] && echo "--critical")
 | `mcp__claude_ai_IWE__knowledge_search` | `query: "test"`, `limit: 1` | бесплатный | ✅ если ответ <15s |
 | `mcp__claude_ai_IWE__github_status` | (без параметров) | бесплатный | ✅ если ответ |
 | `mcp__claude_ai_IWE__personal_search` | `query: "ping"`, `limit: 1` | **подписочный** | ✅ если ответ; **403/subscription_required → ⏸️** (не считать failure) |
-| `mcp__claude_ai_IWE__dt_read_digital_twin` | `path: "1_declarative"` | **подписочный** | ✅ если ответ; **403/subscription_required → ⏸️** (не считать failure) |
+| `mcp__claude_ai_IWE__dt_read_digital_twin` | `path: "/"` | **подписочный** | ✅ если ответ; **403/subscription_required → ⏸️** (не считать failure) |
+
+Двойник проверяется по корню `/`, а не по разделу: незаполненная категория метамодели (например `1_declarative`) отвечает `Path not found`, и исправная установка получала ложный ❌ (#932).
 
 **Подписочное гейтование (DP.SC.112).** `personal_*` и `dt_*` требуют активной БР в `subscription_grants`. Без подписки — это **не сбой инсталляции**, а ожидаемый отказ. Помечать как ⏸️ subscription_required, не ❌. Coverage считать только по доступным для пользователя tool'ам.
 
@@ -103,10 +124,11 @@ Coverage: N/4
 
 ### Алгоритм
 
-1. **Создать sentinel** (единое имя, не session-bound — v2, WP-7/BUGTRIAGE2, issue #237):
+1. **Создать репетицию через begin-helper** (issue #549 stage 2 — эксклюзивное создание под транзакционным замком; token печатается один раз в stdout):
    ```bash
-   echo "{\"created_at\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"session_id\":\"${CLAUDE_SESSION_ID:-noid}\",\"initiator\":\"audit-installation\"}" > /tmp/iwe-dry-run.flag
+   bash "$IWE_SCRIPTS/dry-run-begin.sh" audit-installation "${CLAUDE_SESSION_ID:-}"
    ```
+   Helper печатает `gate_id=`, `owner_token=`, `owner_session_id=`. **Запомни все три значения из вывода tool-call'а** — shell-переменные между твоими Bash-вызовами не живут (Codex r2), а token хранить в файле нельзя (его прочитает репетиция). Активная чужая репетиция → helper завершится ошибкой с её gate_id.
 2. **Запустить subagent** через Agent tool (subagent_type=general-purpose, модель Sonnet) с промптом:
 
    ```
@@ -125,9 +147,9 @@ Coverage: N/4
    ```
 
 3. **Дождаться завершения subagent'а.**
-4. **Очистить sentinel:**
+4. **Завершить репетицию** (атомарный переход active→completed с capability token; sentinel снимается самим helper'ом после completed — Stop-хук теперь только идемпотентный fallback). Подставь значения, запомненные на шаге 1:
    ```bash
-   rm -f /tmp/iwe-dry-run.flag
+   bash "$IWE_SCRIPTS/dry-run-complete.sh" "<gate_id из шага 1>" rehearsal-finished "<owner_session_id из шага 1>" "<owner_token из шага 1>"
    ```
 5. **Сформировать секцию 6 отчёта:**
    ```markdown
@@ -144,7 +166,7 @@ Coverage: N/4
 
 ### Защита от sticky-sentinel
 
-Если subagent упал/завис → попытаться удалить sentinel явно (всегда). TTL 10 мин в самом хуке защищает от случаев, когда даже это не отработало (kill -9, краш CLI).
+Если subagent упал/завис → попытаться удалить sentinel явно (всегда). Stop владельца удалит capability-файл; чужой Stop не затронет защиту. TTL 10 мин в самом хуке защищает от случаев, когда даже это не отработало (kill -9, краш CLI).
 
 ## Шаг 3. Сборка единого отчёта
 
@@ -210,13 +232,11 @@ Coverage: N/4
 
 1. **Сохранить полный отчёт + verdict в файл:**
    ```bash
-   # Приоритет: workspace/scripts/ → $IWE_SCRIPTS (FMT-template/scripts/ для user-mode) → $HOME/IWE
-   if [ -d "$HOME/IWE/scripts" ]; then
-       AUDIT_LOG_DIR="$HOME/IWE/scripts"
-   elif [ -n "${IWE_SCRIPTS:-}" ] && [ -d "$IWE_SCRIPTS" ]; then
-       AUDIT_LOG_DIR="$IWE_SCRIPTS"
+   # Priority (#566): $IWE_SCRIPTS convention first, hardcode only as fallback → $HOME/IWE
+   if [ -d "${IWE_SCRIPTS:-$HOME/IWE/scripts}" ]; then
+       AUDIT_LOG_DIR="${IWE_SCRIPTS:-$HOME/IWE/scripts}"
    else
-       AUDIT_LOG_DIR="$HOME/IWE"
+       AUDIT_LOG_DIR="${IWE_WORKSPACE:-$HOME/IWE}"
    fi
    mkdir -p "$AUDIT_LOG_DIR"
    AUDIT_LOG="$AUDIT_LOG_DIR/iwe-audit-$(date +%Y%m%d-%H%M%S).log"

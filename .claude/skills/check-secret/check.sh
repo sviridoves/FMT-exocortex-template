@@ -49,7 +49,8 @@ declare -a patterns=(
   "Anthropic API key|sk-ant-api[0-9]{2}-[A-Za-z0-9_-]{30,}"
   "GitHub token|gh[poshru]_[A-Za-z0-9]{30,}"
   "AWS access key|AKIA[0-9A-Z]{16}"
-  "Generic 40+ char API token|(_API_KEY|_TOKEN|_KEY)[[:space:]]*=[[:space:]]*\"?[A-Za-z0-9_-]{40,}\"?"
+  "AWS secret key|[Aa][Ww][Ss].{0,24}([Ss]ecret|[Pp]rivate).{0,24}[=:][[:space:]]*[\"']?[A-Za-z0-9/+=]{40}"
+  "Generic 40+ char API token|(_API_KEY|_TOKEN|_KEY)[[:space:]]*=[[:space:]]*\"?[A-Za-z0-9_/+=-]{40,}\"?"
 )
 
 violations=""
@@ -96,7 +97,7 @@ echo "$violations"
 echo ""
 echo "Действия:"
 echo "  - Если плейсхолдер/тест — заменить на [REDACTED] или добавить '# secret-ok' маркер в строку."
-echo "  - Если реальный секрет — НЕ публиковать. Cascade rotation: ~/IWE/DS-ecosystem-development/.../Runbooks/DP.RUNBOOK.003-cascade-secret-rotation.md"
-echo "  - Правило поведения: ~/IWE/memory/feedback_behaviour.md Правило 25."
+echo "  - Если реальный секрет — НЕ публиковать. Cascade rotation: DP.RUNBOOK.003-cascade-secret-rotation.md"
+echo "  - Правило поведения: secrets никогда не публикуются в чат как плейнтекст."
 echo ""
 exit 1

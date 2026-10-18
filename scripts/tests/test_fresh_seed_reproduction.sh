@@ -21,12 +21,17 @@
 
 set -euo pipefail
 
-TEMPLATE_ROOT="${IWE_TEMPLATE:-$HOME/IWE/FMT-exocortex-template}"
+# Template root comes from this file's own location, never from $HOME (CI checks
+# the repository out elsewhere); HOME and TMPDIR stay inside the test's temp dir.
+TEMPLATE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # --- Part 1: seed/strategy + create-wp.sh ---
 
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
+export TMPDIR
+export HOME="$TMPDIR/home"
+mkdir -p "$HOME"
 
 [ -d "$TEMPLATE_ROOT/seed/strategy" ] ||
   { echo "FAIL: seed/strategy missing from template" >&2; exit 1; }
@@ -52,20 +57,24 @@ export IWE_TEMPLATE="$TEMPLATE_ROOT"
 export IWE_ROOT="$TMPDIR"
 export IWE_GOVERNANCE_REPO="strategy"
 
+# --no-artifactor-check: the Artifactor Gate is covered by
+# test_create_wp_artifactor_gate.sh; this part checks that a fresh seed is usable.
 (
   cd "$TMPDIR"
   bash "$TEMPLATE_ROOT/scripts/create-wp.sh" \
     --title "Fresh Seed Smoke" \
     --budget 1h \
     --priority P4 \
-    --no-consent-check
+    --verification-class closed-loop \
+    --no-consent-check \
+    --no-artifactor-check
 ) >"$TMPDIR/create.out" 2>&1 || {
   echo "FAIL: create-wp.sh failed against a freshly copied seed" >&2
   cat "$TMPDIR/create.out" >&2
   exit 1
 }
 
-WP_FILE=$(find "$TMPDIR/strategy/inbox" -type f -path '*/WP-*/WP-*.md' | head -1)
+WP_FILE=$(find "$TMPDIR/strategy/inbox" -type f -path '*/WP-*/WP-*.md' | sed -n 1p)
 [ -n "$WP_FILE" ] ||
   { echo "FAIL: fresh seed produced no first WP" >&2; exit 1; }
 
@@ -74,6 +83,38 @@ grep -q "$WP_ID" "$TMPDIR/strategy/docs/WP-REGISTRY.md" ||
   { echo "FAIL: fresh-seed WP missing from WP-REGISTRY.md" >&2; exit 1; }
 
 echo "✓ create-wp.sh works end-to-end against a fresh seed checkout ($WP_ID)"
+
+# issue #364: both shipped registries expose the writer's six-column schema,
+# and an existing four-column install is migrated without dropping Активация.
+for registry in \
+  "$TEMPLATE_ROOT/seed/strategy/docs/WP-REGISTRY.md" \
+  "$TEMPLATE_ROOT/templates/strategy-skeleton/docs/WP-REGISTRY.md"; do
+  grep -qE '^\| # \| P \| Название \| Ст \| Репо \| Бюджет \|' "$registry" ||
+    { echo "FAIL: non-canonical shipped registry schema: $registry" >&2; exit 1; }
+done
+
+LEGACY_STRATEGY="$TMPDIR/legacy-strategy"
+cp -R "$TEMPLATE_ROOT/seed/strategy" "$LEGACY_STRATEGY"
+cat > "$LEGACY_STRATEGY/docs/WP-REGISTRY.md" <<'EOF'
+# Legacy registry
+
+| # | Название | Статус | Активация |
+|---|----------|--------|-----------|
+| 7 | **Старый РП** | 🔄 | 2026-07-01: начат |
+EOF
+IWE_GOVERNANCE_REPO=legacy-strategy bash "$TEMPLATE_ROOT/scripts/create-wp.sh" \
+  --title "Legacy Migration Smoke" --budget 1h --priority P4 --verification-class closed-loop --no-consent-check --no-artifactor-check \
+  >"$TMPDIR/legacy-create.out" 2>&1 || {
+    cat "$TMPDIR/legacy-create.out" >&2
+    echo "FAIL: create-wp.sh did not migrate a legacy registry" >&2
+    exit 1
+  }
+grep -qE '^\| # \| Название \| Статус \| Активация \| P \| Репо \| Бюджет \|' \
+  "$LEGACY_STRATEGY/docs/WP-REGISTRY.md" ||
+  { echo "FAIL: legacy registry did not gain canonical columns" >&2; exit 1; }
+grep -q '2026-07-01: начат' "$LEGACY_STRATEGY/docs/WP-REGISTRY.md" ||
+  { echo "FAIL: legacy Активация value was lost" >&2; exit 1; }
+echo "✓ Shipped registries are canonical; legacy schema migrates without data loss"
 
 # --- Part 2: setup.sh --dry-run against a full disposable copy of the template ---
 
@@ -121,6 +162,7 @@ CLAUDE_PROJECT_SLUG="contract-test"
 TIMEZONE_HOUR="4"
 TIMEZONE_DESC="4:00 UTC"
 HOME_DIR="$SETUP_TMP/home"
+USER_NAME="contract-test"
 GOVERNANCE_REPO="DS-strategy"
 IWE_TEMPLATE="$TEMPLATE_COPY"
 IWE_RUNTIME="$WORKSPACE/.iwe-runtime"

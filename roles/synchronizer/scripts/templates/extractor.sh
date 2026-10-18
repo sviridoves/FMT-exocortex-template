@@ -38,6 +38,35 @@ build_message() {
             printf "<b>🔍 Knowledge Audit завершён</b>\n\n📅 %s\n\nПроверьте лог: ~/logs/extractor/%s.log" "$DATE" "$DATE"
             ;;
 
+        "session-close-feed"|"git-diff-feed")
+            # Feed scenarios append ###-blocks to the captures inbox (monthly
+            # file under the WP-526 rotation, flat captures.md without it).
+            # Count today's blocks by the feed marker so the pilot sees intake
+            # volume, not just "the feed ran".
+            local feed_marker="feed:${process%-feed}"
+            local inbox_dir="${IWE_WORKSPACE:-$HOME/IWE}/${IWE_GOVERNANCE_REPO:-DS-strategy}/inbox"
+            local captures_target="$inbox_dir/captures/$(date +%Y-%m).md"
+            [ -f "$captures_target" ] || captures_target="$inbox_dir/captures.md"
+            local captured=0
+            if [ -f "$captures_target" ]; then
+                captured=$(grep -c "\[${feed_marker} ${DATE}\]" "$captures_target" 2>/dev/null || true)
+                captured=${captured:-0}
+            fi
+
+            # Было: "Новых кандидатов нет" слала каждый тик таймера, даже когда
+            # ничего не изменилось с прошлого сообщения -- живой дамп 09.10
+            # поймал дубль дважды за 16 минут ровно с этим текстом. Ветка
+            # inbox-check выше уже молчит при пустом результате (echo "" ->
+            # notify.sh пропускает отправку); это делает то же самое для
+            # согласованности -- рутинное "ничего не произошло" идёт в
+            # тихий счётчик (notify.sh's caller decides), не в чат на каждый тик.
+            [ "$captured" -gt 0 ] || { echo ""; return; }
+            printf "<b>🔍 Knowledge Feeder: %s</b>\n\n" "$process"
+            printf "📅 %s\n\n" "$DATE"
+            printf "Захвачено кандидатов за сегодня: %s\n" "$captured"
+            printf "Файл: <code>%s</code>" "${captures_target#"$inbox_dir/"}"
+            ;;
+
         *)
             echo ""
             ;;

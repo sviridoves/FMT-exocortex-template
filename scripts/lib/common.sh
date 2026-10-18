@@ -13,13 +13,52 @@
 # (this file) covers day-open-pipeline.sh + day-open-preflight.sh; the other
 # ~40 call sites are backlog (WP-5 П4), not blind-swept in one pass.
 
+# iwe_env_get FILE KEY — безопасно читает одно KEY=VALUE без source/eval.
+# Поддерживаются только shell-подобные строки с простым ключом; внешние кавычки
+# снимаются, команды и подстановки никогда не исполняются.
+iwe_env_get() {
+  local file="${1:-}" key="${2:-}" line value
+  [ -f "$file" ] || return 1
+  case "$key" in *[!A-Za-z0-9_]*|'') return 2 ;; esac
+  line=$(grep -E "^[[:space:]]*${key}=" "$file" 2>/dev/null | head -1) || return 1
+  [ -n "$line" ] || return 1
+  value=${line#*=}
+  value=${value#"${value%%[![:space:]]*}"}
+  value=${value%"${value##*[![:space:]]}"}
+  case "$value" in
+    \"*\") value=${value#\"}; value=${value%\"} ;;
+    \'*\') value=${value#\'}; value=${value%\'} ;;
+  esac
+  printf '%s\n' "$value"
+}
+
 # iwe_resolve_root [EXPLICIT] — canonical $IWE workspace root.
-# Precedence: explicit arg > IWE_WORKSPACE > IWE_ROOT > $HOME/IWE.
+# Precedence: explicit arg > IWE_WORKSPACE > IWE_ROOT > workspace .exocortex.env
+# > root derived from this installed library. No $HOME/IWE guess: a wrong root
+# must fail loudly instead of letting a script succeed against another install.
 # (IWE_ROOT_ARG, a third variant seen in some scripts, is intentionally NOT
 # consulted here — callers that need a positional-arg override should pass
 # it as EXPLICIT instead of adding a 4th env var to this precedence chain.)
 iwe_resolve_root() {
-  echo "${1:-${IWE_WORKSPACE:-${IWE_ROOT:-$HOME/IWE}}}"
+  local explicit="${1:-}" library_root configured
+  [ -n "$explicit" ] && { printf '%s\n' "$explicit"; return 0; }
+  [ -n "${IWE_WORKSPACE:-}" ] && { printf '%s\n' "$IWE_WORKSPACE"; return 0; }
+  [ -n "${IWE_ROOT:-}" ] && { printf '%s\n' "$IWE_ROOT"; return 0; }
+
+  library_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." 2>/dev/null && pwd -P) || return 1
+  if [ -f "$library_root/.exocortex.env" ]; then
+    configured=$(iwe_env_get "$library_root/.exocortex.env" WORKSPACE_DIR 2>/dev/null || true)
+    if [ -n "$configured" ] && [ -d "$configured" ]; then
+      printf '%s\n' "$configured"
+      return 0
+    fi
+  fi
+  if [ -d "$library_root/FMT-exocortex-template" ] || [ -d "$library_root/.iwe-runtime" ]; then
+    printf '%s\n' "$library_root"
+    return 0
+  fi
+  echo "iwe_resolve_root: cannot determine workspace root; pass an explicit path or set IWE_WORKSPACE/IWE_ROOT" >&2
+  return 1
 }
 
 # iwe_sha256 — sha256 of stdin, printed alone (no filename column).
@@ -38,9 +77,68 @@ iwe_sha256() {
   fi
 }
 
+# iwe_md5 — md5 of stdin, printed alone (no filename column). Same GNU-first
+# rationale as iwe_sha256 (issue #1108): md5sum is coreutils (every Linux,
+# absent on macOS by default); BSD `md5` with no file argument reads stdin
+# and already prints just the bare hex digest (verified: no "MD5(-)=" prefix
+# the way `md5 -p`/named-file invocations add one), so it needs no awk/cut.
+iwe_md5() {
+  if command -v md5sum >/dev/null 2>&1; then
+    md5sum | awk '{print $1}'
+  else
+    md5
+  fi
+}
+
+# iwe_file_mtime_date FILE — дата YYYY-MM-DD без смешивания stdout двух
+# несовместимых stat-реализаций. GNU и BSD ветки выбираются явно (#300).
+iwe_file_mtime_date() {
+  local file="$1" epoch
+  if stat --version >/dev/null 2>&1; then
+    epoch=$(stat -c %Y "$file") || return 1
+    date -d "@$epoch" +%Y-%m-%d
+  else
+    epoch=$(stat -f %m "$file") || return 1
+    date -r "$epoch" +%Y-%m-%d
+  fi
+}
+
 # iwe_resolve_governance_repo [EXPLICIT] — canonical governance-repo name.
 iwe_resolve_governance_repo() {
   echo "${1:-${IWE_GOVERNANCE_REPO:-DS-strategy}}"
+}
+
+# iwe_sessions_dir — корень журналов сессий для ЧИТАТЕЛЕЙ (issue #545).
+# Тот же контракт, что у писателя (session-guard.sh resolve_orz_sessions_dir,
+# порт WP-526 Ф2): писатель переключается на MC-sessions после миграции, а
+# читатели, жёстко смотрящие в legacy-путь, теряли перенос со вчера на
+# мигрированной установке — и «не найдено» было неотличимо от «нечего
+# находить».
+#   1. IWE_SESSIONS_ROOT задан явно → он; каталог обязан существовать, иначе
+#      return 1 (явный override — осознанный выбор, молчаливый обход скрыл бы
+#      реальную расконфигурацию; решение о WARN/пропуске — у читателя).
+#   2. Существует $IWE_ROOT/MC-sessions → он (мигрированная установка).
+#   3. Иначе — legacy $IWE_ROOT/<governance-repo>/sessions. Имя репозитория:
+#      GOVERNANCE_REPO (старший override, семантика day-close.sh) >
+#      IWE_GOVERNANCE_REPO > DS-strategy.
+# В отличие от писательского резолвера — без side-эффектов: ничего не создаёт
+# и не падает, git-валидность не требует (читателю достаточно файлов).
+iwe_sessions_dir() {
+  local root="${IWE_ROOT:-${IWE_WORKSPACE:-}}"
+  if [ -n "${IWE_SESSIONS_ROOT:-}" ]; then
+    [ -d "$IWE_SESSIONS_ROOT" ] || return 1
+    printf '%s\n' "$IWE_SESSIONS_ROOT"
+    return 0
+  fi
+  # Пустой root (ни IWE_ROOT, ни IWE_WORKSPACE) — та же честная ошибка, что у
+  # сломанного явного override: иначе функция вернула бы путь от корня
+  # файловой системы, прочитанный как валидный.
+  [ -n "$root" ] || return 1
+  if [ -d "$root/MC-sessions" ]; then
+    printf '%s\n' "$root/MC-sessions"
+    return 0
+  fi
+  printf '%s\n' "$root/$(iwe_resolve_governance_repo "${GOVERNANCE_REPO:-}")/sessions"
 }
 
 # iwe_scheduler_active — is any IWE role scheduler (strategist/synchronizer/
@@ -65,24 +163,109 @@ iwe_resolve_governance_repo() {
 # evidence fallback — a scheduler log written in the last 2 days under
 # ~/logs/synchronizer/, regardless of which launcher wrote it — so the next
 # unenumerated launch mechanism doesn't reopen this same bug class again.
-iwe_scheduler_active() {
-  if command -v launchctl >/dev/null 2>&1 \
-    && launchctl list 2>/dev/null | grep -qE "com\.(exocortex\.scheduler|strategist\.morning|strategist\.weekreview|extractor\.inbox-check)"; then
-    return 0
-  fi
-  if command -v systemctl >/dev/null 2>&1; then
-    # No --all: list-timers without it already restricts to loaded+active
-    # units. --all would also match a disabled/stopped timer, reporting a
-    # dead scheduler as 🟢.
-    systemctl --user list-timers --no-legend 2>/dev/null \
-      | grep -qE "iwe-(exocortex-scheduler|strategist-morning|strategist-weekreview|extractor-inbox-check)\.timer" && return 0
-  fi
+#
+# issue #347 (fourth recurrence, this time not in detection but in interpretation):
+# a plain boolean collapsed three very different situations into "not active" —
+# never installed here, installed but stopped, and "the launcher query itself
+# failed so nothing can be concluded". Callers painted all three red and opened a
+# fresh incident file every morning on an install where the scheduler had simply
+# never been deployed. iwe_scheduler_state() below reports which of the four it is;
+# iwe_scheduler_active() stays as the boolean wrapper for callers that only ask
+# "is it running right now".
+
+# iwe_scheduler_deployment_evidence — did anyone ever install a scheduler here?
+# Deployment artefacts outlive the scheduler being stopped, so their absence is
+# what separates "never installed" from "installed and broken".
+iwe_scheduler_deployment_evidence() {
+  # find, not `ls A B C`: ls exits non-zero when ANY of the three globs matches
+  # nothing, and roles install independently (synchronizer ships only
+  # com.exocortex.scheduler.plist, extractor only its own). A partial install would
+  # therefore read as "no evidence" and a real outage would silently downgrade to
+  # not_deployed — disabling the very detection this function exists for.
+  find "$HOME/Library/LaunchAgents" -maxdepth 1 \
+    \( -name 'com.exocortex.*.plist' -o -name 'com.strategist.*.plist' -o -name 'com.extractor.*.plist' \) \
+    2>/dev/null | grep -q . && return 0
+  find "$HOME/.config/systemd/user" -maxdepth 1 -name 'iwe-*.timer' 2>/dev/null | grep -q . && return 0
   if command -v crontab >/dev/null 2>&1 \
     && crontab -l 2>/dev/null | grep -qE "scheduler\.sh|iwe-(exocortex-scheduler|strategist|extractor)"; then
     return 0
   fi
-  find "$HOME/logs/synchronizer" -maxdepth 1 -iname "*scheduler*.log" -mtime -2 2>/dev/null | grep -q . && return 0
+  # Any historical log, at any age — proof the scheduler ran here at least once.
+  find "$HOME/logs/synchronizer" -maxdepth 1 -iname "*scheduler*.log" 2>/dev/null | grep -q . && return 0
   return 1
+}
+
+# iwe_scheduler_state — prints exactly one of:
+#   active            — a unit is registered and live with this OS's launcher
+#   deployed_inactive — artefacts exist, nothing live right now (a real outage)
+#   not_deployed      — no unit, no crontab entry, no log history: never installed here
+#   unknown           — a launcher is present but its query failed, so nothing is provable
+iwe_scheduler_state() {
+  local probe_failed=false launcher_out
+
+  if command -v launchctl >/dev/null 2>&1; then
+    if launcher_out=$(launchctl list 2>/dev/null); then
+      printf '%s\n' "$launcher_out" \
+        | grep -qE "com\.(exocortex\.scheduler|strategist\.morning|strategist\.weekreview|extractor\.inbox-check)" \
+        && { echo active; return 0; }
+    else
+      probe_failed=true
+    fi
+  fi
+
+  if command -v systemctl >/dev/null 2>&1; then
+    # No --all: list-timers without it already restricts to loaded+active units.
+    # --all would also match a disabled/stopped timer, reporting a dead scheduler
+    # as 🟢. A failing call here is common and meaningful: inside WSL or a container
+    # without a user session bus, `systemctl --user` errors out rather than
+    # reporting "no timers" — that is `unknown`, not "not deployed".
+    if launcher_out=$(systemctl --user list-timers --no-legend 2>/dev/null); then
+      printf '%s\n' "$launcher_out" \
+        | grep -qE "iwe-(exocortex-scheduler|strategist-morning|strategist-weekreview|extractor-inbox-check)\.timer" \
+        && { echo active; return 0; }
+    else
+      probe_failed=true
+    fi
+  fi
+
+  # `crontab -l` exits non-zero for the ordinary "no crontab for this user" case as
+  # well as for a real failure, so a non-zero status here is not evidence of either.
+  if command -v crontab >/dev/null 2>&1 \
+    && crontab -l 2>/dev/null | grep -qE "scheduler\.sh|iwe-(exocortex-scheduler|strategist|extractor)"; then
+    echo active
+    return 0
+  fi
+
+  # Generic evidence fallback (issue #314): a scheduler log written in the last two
+  # days counts as live regardless of which launcher wrote it.
+  if find "$HOME/logs/synchronizer" -maxdepth 1 -iname "*scheduler*.log" -mtime -2 2>/dev/null | grep -q .; then
+    echo active
+    return 0
+  fi
+
+  # `unknown` is checked BEFORE deployment evidence, not after: on WSL the timer files
+  # sit in ~/.config/systemd/user/ while `systemctl --user` cannot answer at all. With
+  # the checks the other way round that host reads as deployed_inactive → red Mode A +
+  # a fresh incident every morning, which is exactly the false alarm this split exists
+  # to remove. A failed probe means "not provable", and that outranks any artefact.
+  if [ "$probe_failed" = true ]; then
+    echo unknown
+    return 0
+  fi
+
+  if iwe_scheduler_deployment_evidence; then
+    echo deployed_inactive
+    return 0
+  fi
+
+  echo not_deployed
+}
+
+# Boolean wrapper: true only for `active`. Kept for callers that genuinely need a
+# yes/no answer (day-open-smoke.sh); anything that reports status to a human should
+# use iwe_scheduler_state() so "not deployed" and "cannot tell" stay distinguishable.
+iwe_scheduler_active() {
+  [ "$(iwe_scheduler_state)" = "active" ]
 }
 
 # tg_notify MESSAGE — best-effort Telegram alert via TELEGRAM_BOT_TOKEN/
@@ -228,4 +411,139 @@ iwe_safe_pull() {
 
     echo "iwe_safe_pull: rebase complete, ${#orig_pids[@]} local patch(es) verified preserved"
   )
+}
+
+# iwe_calendar_source [PARAMS_FILE] — where Day Open takes the calendar from
+# (issue #942): connector (default: calendar connector, then server-calendar.sh),
+# script (server-calendar.sh only), none (the calendar is not used at all).
+# A missing key or file means connector, so existing installs keep working; an
+# unknown value warns on stderr and also means connector.
+iwe_calendar_source() {
+  local file="${1:-}" value
+  [ -f "$file" ] || { echo connector; return 0; }
+  value=$(grep -E '^calendar_source:' "$file" 2>/dev/null | head -1 \
+    | sed -E 's/^calendar_source:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^["'"'"']//; s/["'"'"']$//')
+  case "$value" in
+    ''|connector) echo connector ;;
+    script|none) echo "$value" ;;
+    *)
+      echo "WARN: params.yaml: calendar_source «$value» неизвестно (connector|script|none), использую connector" >&2
+      echo connector ;;
+  esac
+}
+
+# iwe_heading_style [PARAMS_FILE] — DayPlan/WeekPlan section heading style
+# (issue #496): details (default) uses <details><summary> per formatting.md
+# (collapsible in GitHub/VS Code); markdown uses `## ` headings instead
+# (readable in viewers that render HTML literally, e.g. Obsidian — the PR's
+# original complaint). A missing key or file means details, so existing
+# installs keep working; an unknown value warns on stderr and also means
+# details.
+iwe_heading_style() {
+  local file="${1:-}" value
+  [ -f "$file" ] || { echo details; return 0; }
+  value=$(grep -E '^dayplan_weekplan_heading_style:' "$file" 2>/dev/null | head -1 \
+    | sed -E 's/^dayplan_weekplan_heading_style:[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^["'"'"']//; s/["'"'"']$//')
+  case "$value" in
+    ''|details) echo details ;;
+    markdown) echo "$value" ;;
+    *)
+      # `${value}` not `$value` before the closing guillemet: bash's parameter-
+      # name scanner can swallow the first byte of a following multibyte UTF-8
+      # character as part of the variable name (found running this function
+      # under `set -u`: "value<replacement-char>: unbound variable" — the same
+      # unbraced pattern already exists in iwe_calendar_source above and is a
+      # pre-existing, separate latent bug there, not fixed here/out of scope).
+      echo "WARN: params.yaml: dayplan_weekplan_heading_style «${value}» неизвестно (details|markdown), использую details" >&2
+      echo details ;;
+  esac
+}
+
+# iwe_render_heading_style STYLE — filters stdin, converting DayPlan/WeekPlan
+# section headings between the two forms iwe_heading_style selects (issue
+# #496). `details` (the default) passes text through unchanged — the
+# validator (.claude/hooks/protocol-artifact-validate.sh Check 1) already
+# accepts both forms, so this is purely a rendering choice, not a format
+# migration. Only converts the two literal patterns producers actually emit:
+# `<summary><b>TEXT</b></summary>` and `<summary><strong>TEXT</strong></summary>`
+# (the latter used by the captures section) — `<details[ open]>`/`</details>`
+# lines are dropped in markdown mode since `## ` headings need no wrapper.
+iwe_render_heading_style() {
+  local style="${1:-details}"
+  if [ "$style" != markdown ]; then
+    cat
+    return 0
+  fi
+  # delimiter `|` (not `#`): the replacement text itself is a `## ` heading,
+  # which would terminate a `#`-delimited s/// before reaching the capture
+  # group (found running this function for the first time: `sed: bad flag in
+  # substitute command: '#'`).
+  sed -E \
+    -e '/^<details( open)?>[[:space:]]*$/d' \
+    -e '/^<\/details>[[:space:]]*$/d' \
+    -e 's|^<summary><b>(.*)</b></summary>[[:space:]]*$|## \1|' \
+    -e 's|^<summary><strong>(.*)</strong></summary>[[:space:]]*$|## \1|'
+}
+
+# iwe_scheduler_model KEY DEFAULT [PARAMS_FILE] — model alias for one
+# strategist background scenario (issue #1092), read from a flat params.yaml
+# key (e.g. scheduler_model_week_review). A missing key means DEFAULT, so
+# existing installs keep working unchanged after this is added. A key that
+# is present but empty (or only whitespace) is a config error, not a silent
+# fallback to DEFAULT -- a user who just edited the file to change the model
+# and mistyped it should see that, not keep running the old hardcoded model
+# unaware the edit had no effect. No allowlist of known model aliases: that
+# would go stale as new ones ship and block them until the template catches up.
+iwe_scheduler_model() {
+  local key="$1" default="$2" file="${3:-}" value
+  [ -f "$file" ] || { printf '%s\n' "$default"; return 0; }
+  grep -qE "^${key}:" "$file" 2>/dev/null || { printf '%s\n' "$default"; return 0; }
+  value=$(grep -E "^${key}:" "$file" | head -1 \
+    | sed -E "s/^${key}:[[:space:]]*//; s/[[:space:]]+#.*\$//; s/[[:space:]]+\$//; s/^[\"']//; s/[\"']\$//")
+  if [ -z "${value//[[:space:]]/}" ]; then
+    echo "ERROR: params.yaml: $key задан пустым значением — укажи алиас модели строкой или убери строку целиком, чтобы использовать $default" >&2
+    return 1
+  fi
+  printf '%s\n' "$value"
+}
+
+# iwe_timeout DURATION CMD [ARGS...] — portable `timeout`. Delegates to the
+# real timeout(1) when present (GNU coreutils on every Linux, Homebrew
+# coreutils on macOS); falls back to a perl polyfill when it's missing
+# (stock macOS with no Homebrew — issue #1006, re-found for a 4th call site
+# by #1108). Centralized here instead of a 4th inline copy-paste — three
+# scripts (roles/extractor/scripts/extractor.sh, scripts/active-wp-sweep.sh,
+# roles/strategist/scripts/strategist.sh) each still carry their own inline
+# copy of the #1006 fix predating this helper; left as-is (migrating them is
+# out of scope for #1108) but any new caller should use this instead of a
+# 5th copy. Same exit-code contract as GNU timeout: 124 on an actual
+# timeout, otherwise the child's own exit status (128+signal if the child
+# was killed by a signal, matching how the shell itself reports that case).
+iwe_timeout() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout "$@"
+    return $?
+  fi
+  local duration="$1"; shift
+  perl -e '
+      my $timeout = shift @ARGV;
+      my $timed_out = 0;
+      my $pid = fork();
+      if ($pid == 0) { exec @ARGV; die "exec failed: $!"; }
+      eval {
+          local $SIG{ALRM} = sub { $timed_out = 1; die "timeout\n"; };
+          alarm $timeout;
+          waitpid($pid, 0);
+          alarm 0;
+      };
+      if ($timed_out) {
+          kill "TERM", $pid;
+          select(undef, undef, undef, 0.5);
+          kill "KILL", $pid;
+          waitpid($pid, 0);
+          exit 124;
+      }
+      # A child ended by a signal reports 128+signal, like the shell does.
+      exit(($? & 127) ? 128 + ($? & 127) : ($? >> 8));
+  ' "$duration" "$@"
 }

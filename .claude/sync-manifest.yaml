@@ -50,17 +50,14 @@ pairs:
     owner_role: agent
     symptom: "Day Open работает не по protocol-open.md"
 
-  # 2. Staging ↔ FMT (валидированные правила должны быть промотированы)
-  - id: staging-validated-to-fmt
-    source: STAGING.md
-    derived: FMT-exocortex-template/
-    relation: reconciliation
-    check: mtime-lag
-    threshold_days: 7
-    critical_days: 21
-    owner_role: human
-    symptom: "Правило `validated` в STAGING.md не промотировано в FMT более 3 недель"
-    notes: "Если у вас нет локального FMT-зеркала — пара бесполезна, удалите."
+  # 2. (issue #404) staging-validated-to-fmt пара удалена отсюда 2026-08-12:
+  #    её source (STAGING.md) — авторская инфраструктура обкатки (CLAUDE.md §8),
+  #    не поставляется пользовательской установкой шаблона. Пара безусловно
+  #    получала status=missing (mtime-lag не различает "источника нет и не
+  #    будет" от "источник реально пропал") на каждой не-авторской установке
+  #    навсегда — не намеренная задержка. Автору, кто ведёт STAGING.md,
+  #    эквивалентный трекинг — через собственный `author_mode` манифест,
+  #    не общий шипящийся файл.
 
   # 3. ARCH-якорь ↔ downstream `derived_from:` (helper из scripts/iwe-drift-helpers/)
   - id: arch-version-drift
@@ -135,16 +132,12 @@ activity_checks:
     action: "Lesson Hygiene (ротация, архивация, сжатие MEMORY.md)"
     expected_per_period: 1
     period_days: 7
-    commit_pattern_regex: "(lesson|memory|lessons_).*(archive|rotate|clean|hygiene)"
+    commit_pattern_regex: "([Ll]esson|[Mm]emory|lessons_|[Уу]рок|[Пп]амят).*(archive|rotate|clean|hygiene|[Аа]рхив|[Рр]отаци|[Сс]жат|[Оо]чист|[Гг]игиен)"
     dormant_after_periods: 3
     archive_after_periods: 1
     notes: "Trigger: /week-close. Симптом мёртвости — MEMORY.md раздувается >100 строк."
 
-  - id: staging-promotion
-    action: "Staging-промоция validated правил в FMT"
-    expected_per_period: 1
-    period_days: 14
-    commit_pattern_regex: "(STAGING|staging|promote).*S-[0-9]+"
-    dormant_after_periods: 3
-    archive_after_periods: 1
-    notes: "Trigger: /week-close. Симптом мёртвости — S-NN validated >21 дня без промоции."
+  # staging-promotion removed (issue #1098): same class as staging-validated-to-fmt
+  # (#404) — source (STAGING.md, /author-mode) is author-only, author_mode: false
+  # installs never produce this commit pattern, so the detector reported a
+  # permanent false "dormant" candidate on every user install.

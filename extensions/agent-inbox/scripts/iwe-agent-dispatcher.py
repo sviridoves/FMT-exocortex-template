@@ -79,7 +79,7 @@ _STOP_ACTIONS = frozenset(("stop", "cancel"))
 COMMIT_AUTHOR_NAME = os.environ.get("IWE_DISPATCHER_AUTHOR_NAME", "IWE Agent Dispatcher")
 COMMIT_AUTHOR_EMAIL = os.environ.get("IWE_DISPATCHER_AUTHOR_EMAIL", "noreply@example.com")
 
-# WP-358 follow-up Ф3 (2026-05-30): Y.2 deploy — stateless dispatcher на tsekh-1.
+# WP-358 follow-up Ф3 (2026-05-30): Y.2 deploy — stateless dispatcher на удалённом сервере.
 # При наличии GITHUB_TOKEN session-mode использует GitHub Contents API (read) +
 # Git Data API (atomic write blob+tree+commit+ref). Без TOKEN — fallback на старый
 # stateful session-mode через локальный клон (--workdir обязателен).
@@ -93,7 +93,7 @@ IWE_DISPATCHER_ETAG_DB = os.path.expanduser(
 # Version self-check — see _check_dispatcher_version().
 __version__ = "2026-05-30-y2-1"
 # WP-503 Ф5.2 Security pre-flight (2026-07-26): PII-filter + shell-injection guard
-_SECURITY_VERSION = "2026-07-26-security-1"
+_SECURITY_VERSION = "2026-08-06-security-2"
 
 # === Security: PII-filter + shell-injection guard (WP-503 Ф5.2) ===
 # See also: WP-500 (agent-trace-recorder.sh) for similar PII-masking pattern.
@@ -453,6 +453,9 @@ def ensure_workdir(workdir: Path) -> None:
         # so no concurrent git process holds it. (bug-2026-06-20-session-dispatcher-py39)
         (repo_dir / ".git" / "index.lock").unlink(missing_ok=True)
         run(["git", "fetch", "origin", GOV_BRANCH], cwd=repo_dir, timeout=60)
+        # Re-check right before the destructive op — closes the TOCTOU window
+        # left by only checking once at function entry (WP-7 Ф73).
+        _guard_repo_dir_is_isolated(repo_dir)
         run(["git", "reset", "--hard", f"origin/{GOV_BRANCH}"], cwd=repo_dir,
             timeout=30)
     # Configure git identity
@@ -624,7 +627,7 @@ def _emit_event(event_type: str, ext_suffix: str, payload: dict) -> None:
     """WP-7 TGSH + WP-358 follow-up Ф3a: эмитит событие в event-gateway через urllib. Non-blocking.
 
     Заменяет shell-обёртку iwe_event_emit.sh — убирает зависимость от локального клона репо
-    на tsekh-1 (Y.2 deploy). Stdlib only.
+    на удалённом сервере (Y.2 deploy). Stdlib only.
     """
     import urllib.request as _urlreq
     import urllib.error as _urlerr
@@ -723,24 +726,41 @@ def _classify_claude_failure(stderr: str, stdout: str) -> str:
 _SECURITY_WHITELIST_PATH = Path(__file__).parent / "config" / "pipeline-security-whitelist.yaml"
 
 
+class SecurityConfigurationError(RuntimeError):
+    """Headless-вызов запрещён: защитная конфигурация отсутствует или невалидна."""
+
+
 def _load_disallowed_tools() -> list[str]:
     """WP-503 Ф9 (АрхГейт Ф5 NBR №3): headless Executor не должен повторить
     инцидент WP-7 23.07 (`railway list_variables` без фильтра напечатал ~90
     боевых секретов). Читает файл заново на каждый вызов (не кэширует) —
     расширение whitelist не требует перезапуска диспетчера.
 
-    Пустой список при отсутствующем/битом файле — это НЕ fail-open дыра:
-    отсутствие --disallowedTools просто не сужает права сверх дефолтных
-    permission-настроек CLI, whitelist добавляет ограничения, не снимает их."""
-    import yaml
+    Fail-closed: без непустого валидного списка Claude Executor не запускается.
+    Это защитный контроль, а не необязательная настройка CLI."""
+    try:
+        import yaml
+    except ImportError as exc:
+        raise SecurityConfigurationError("PyYAML is unavailable") from exc
+
     try:
         with open(_SECURITY_WHITELIST_PATH, encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-    except (OSError, yaml.YAMLError) as e:
-        log(f"security whitelist не загружен ({_SECURITY_WHITELIST_PATH}): {e}, продолжаю без --disallowedTools", "WARN")
-        return []
-    tools = data.get("disallowed_tools") or []
-    return [str(t) for t in tools if isinstance(t, str)]
+            data = yaml.safe_load(f)
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise SecurityConfigurationError(
+            f"cannot load {_SECURITY_WHITELIST_PATH}: {exc}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise SecurityConfigurationError("security whitelist root must be a mapping")
+    tools = data.get("disallowed_tools")
+    if not isinstance(tools, list) or not tools:
+        raise SecurityConfigurationError("disallowed_tools must be a non-empty list")
+    if any(not isinstance(tool, str) or not tool.strip() for tool in tools):
+        raise SecurityConfigurationError(
+            "every disallowed_tools item must be a non-empty string"
+        )
+    return list(dict.fromkeys(tool.strip() for tool in tools))
 
 
 class Executor:
@@ -763,8 +783,7 @@ class ClaudeCodeExecutor(Executor):
     def build_cmd(self, prompt: str, model: str) -> list[str]:
         cmd = ["claude", "-p", prompt, "--model", model, "--output-format", "text"]
         disallowed = _load_disallowed_tools()
-        if disallowed:
-            cmd += ["--disallowedTools", ",".join(disallowed)]
+        cmd += ["--disallowedTools", ",".join(disallowed)]
         return cmd
 
 
@@ -841,7 +860,12 @@ def invoke_claude_with_heartbeat(
     name is kept for backward compatibility with existing call sites.
     """
     executor = resolve_executor(executor_key)
-    cmd = executor.build_cmd(prompt, model)
+    try:
+        cmd = executor.build_cmd(prompt, model)
+    except SecurityConfigurationError as exc:
+        output = f"SECURITY CONFIG ERROR: {exc}"
+        log(output, "ERROR")
+        return False, output
     started = time.monotonic()
 
     try:
@@ -990,6 +1014,71 @@ def write_result(repo_dir: Path, task_id: str, fm: dict,
     return result_path
 
 
+def _collect_extra_task_files(repo_dir: Path, exclude: set[Path]) -> list[Path]:
+    """Safety-net (WP-564 Ф3): подбирает markdown-артефакты, которые агент создал
+    сам внутри inbox/agent/tasks/ через свой Write, но не закоммитил.
+
+    Живой прогон Ф2 (12.09.2026) показал: агент реально создаёт N файлов-шагов
+    (per headless-adapter.md таблица A), но post-invoke `git reset --hard
+    origin/<branch>` не трогает untracked-файлы, а финальный commit_and_push()
+    стейджит только [task_path, result_path] — файлы шагов остаются untracked
+    и теряются. Фильтрация по id/task_id из frontmatter не работает: внешний
+    task-файл использует поле `id`, а файлы-шаги, которые пишет сам агент,
+    заводят собственное поле `task_id` со значением ШАГА, а не задачи —
+    совпадения не бывает никогда (пир-сессия 2026-09-12-10-wp564-dispatcher-fix).
+
+    Вместо этого — directory-scope: process_task() вызывается строго
+    последовательно (main() — plain for-loop) под общим `acquire_lock()`,
+    поэтому любой untracked/modified .md в inbox/agent/tasks/ на момент
+    финального коммита принадлежит текущему прогону.
+
+    Известный остаточный риск (не устранён этим фиксом): untracked .md,
+    оставшиеся от прерванного предыдущего прогона в этой же tasks_dir, будут
+    подхвачены вместе с артефактами текущего — это проблема мусора в рабочей
+    директории, не проблема параллелизма.
+
+    Осознанно вне охвата: только `.md`-файлы под inbox/agent/tasks/. Не-md
+    артефакты (например, лог-файл, который агент завёл в живом прогоне Ф2)
+    safety-net не подхватывает — это принятое ограничение, не баг.
+    """
+    tasks_dir = repo_dir / "inbox" / "agent" / "tasks"
+    # -z: git не квотирует путь в кавычки/octal-escape для пробелов и non-ASCII
+    # (кириллица) — обычный --porcelain это делает, и построчный парсинг
+    # молча терял такие файлы (найдено ревью этой же пир-сессии). В -z формате
+    # rename/copy — это второе NUL-поле (ORIG_PATH) СЛЕДОМ за записью, не
+    # часть текста самой записи, поэтому спецкейс " -> " больше не нужен.
+    cp = run(["git", "status", "--porcelain", "-z", "--untracked-files=all", "--", str(tasks_dir)],
+             cwd=repo_dir, check=True)
+
+    collected: list[Path] = []
+    tokens = cp.stdout.split("\0")
+    i = 0
+    while i < len(tokens):
+        record = tokens[i]
+        i += 1
+        if len(record) < 4:
+            continue
+        status, rel = record[:2], record[3:]
+        if "R" in status:  # copy-detection выключен (нет --find-copies) — "C" сюда не приходит
+            i += 1  # ORIG_PATH — отдельное NUL-поле, нас интересует только новый путь
+        if "D" in status:  # удаления — не наша забота
+            continue
+        # Без .resolve(): repo_dir уже абсолютный (см. вызов в process_task), а
+        # commit_and_push() сам делает f.relative_to(repo_dir) без резолва
+        # симлинков (iwe-agent-dispatcher.py:467) — резолвить здесь и не резолвить
+        # там значило бы сравнивать разные представления одного пути (найдено
+        # ревью /verify этой же пир-сессии).
+        candidate = repo_dir / rel
+        if candidate.suffix.lower() != ".md" or candidate in exclude:
+            continue
+        try:
+            candidate.relative_to(tasks_dir)
+        except ValueError:
+            continue
+        collected.append(candidate)
+    return collected
+
+
 # === Главный цикл ===
 
 def process_task(task_path: Path, repo_dir: Path, dry_run: bool) -> bool:
@@ -1119,9 +1208,24 @@ def process_task(task_path: Path, repo_dir: Path, dry_run: bool) -> bool:
         "completed_at": finished_at.isoformat(),
         "verdict": domain_verdict or ("PASS" if ok else "UNKNOWN"),
     })
+
+    # WP-564 Ф3: подобрать то, что агент создал сам через Write и не закоммитил
+    # (см. docstring _collect_extra_task_files).
+    try:
+        extra_files = _collect_extra_task_files(repo_dir, exclude={task_path, result_path})
+    except Exception as e:
+        # Не даём новому шагу уронить уже готовый completed/failed-коммит —
+        # откатываемся к поведению до Ф3 (только task_path+result_path), но
+        # громко, не молча (найдено /verify этой же пир-сессии).
+        log(f"safety-net: git status упал, extra_files пропущены: {e}", "WARN")
+        extra_files = []
+    # Лог всегда, не только при extra_files>0 — иначе "агент ничего не оставил"
+    # неотличимо от "safety-net не отработал/упал" (риск найден Kimi, ход 4).
+    log(f"safety-net: extra_files={len(extra_files)} в inbox/agent/tasks/", "DEBUG")
+
     commit_and_push(repo_dir,
         f"dispatch(WP-324): {task_id} → {'completed' if ok else 'failed'}",
-        [task_path, result_path])
+        [task_path, result_path, *extra_files])
 
     return True
 
@@ -1230,6 +1334,11 @@ SESSION_DB_PATH = os.path.expanduser(
 )
 TG_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "") or os.environ.get("TG_BOT_TOKEN", "")
 SESSION_IDLE_TIMEOUT_MIN = int(os.environ.get("IWE_SESSION_IDLE_TIMEOUT_MIN", "60"))
+# bug-2026-07-27-session-dispatcher-duplicate-turn-race: the same TTL family as
+# LOCK_TTL_MIN above, for the same reason -- long enough to cover a legitimate
+# turn (invoke_claude_with_heartbeat + push-retry loop can run several minutes),
+# short enough that a crashed holder (kill -9, OOM) doesn't block retries forever.
+TURN_RESERVATION_TTL_MIN = int(os.environ.get("IWE_DISPATCHER_TURN_RESERVATION_TTL_MIN", "30"))
 
 # Allowlist for session_id values — prevents path traversal via crafted GitHub files
 _SESSION_ID_RE = re.compile(r'^SESSION-[A-Za-z0-9-]+$')
@@ -1262,6 +1371,23 @@ def _get_session_db() -> sqlite3.Connection:
             last_ping  TEXT NOT NULL
         )
     """)
+    # bug-2026-07-27-session-dispatcher-duplicate-turn-race: processed_turns was
+    # only ever written AFTER a turn's full work (agent call + push) succeeded,
+    # so two overlapping runs on the same session_id/turn_n both saw "not yet
+    # processed" and both did the work -- confirmed live: commit `turn 1→3`
+    # (should have been `2→3`) from a second run that started 4s after the
+    # first one's turn 2 had already landed. This table is a short-lived claim
+    # taken BEFORE the work starts, so a concurrent run backs off instead of
+    # duplicating it; see _try_reserve_turn/_release_turn_reservation below.
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS turn_in_progress (
+            session_id TEXT NOT NULL,
+            turn_n     INTEGER NOT NULL,
+            started_at TEXT NOT NULL,
+            holder_pid INTEGER NOT NULL,
+            PRIMARY KEY (session_id, turn_n)
+        )
+    """)
     conn.commit()
     return conn
 
@@ -1281,6 +1407,53 @@ def _mark_turn_processed(conn: sqlite3.Connection, session_id: str, turn_n: int)
     conn.execute(
         "INSERT OR IGNORE INTO processed_turns (session_id, turn_n, processed_at) VALUES (?,?,?)",
         (session_id, turn_n, now_utc().isoformat()),
+    )
+    conn.commit()
+
+
+def _try_reserve_turn(
+    conn: sqlite3.Connection, session_id: str, turn_n: int,
+    ttl_min: int = TURN_RESERVATION_TTL_MIN,
+) -> bool:
+    """Claim (session_id, turn_n) before starting the actual work.
+
+    True: this call holds the claim, proceed. False: someone else holds a
+    fresh claim (genuinely concurrent run) -- the caller must skip, not retry
+    in a loop; the next dispatcher tick will see the same state honestly. A
+    stale claim (holder crashed mid-turn without reaching the release in
+    `finally`) is reclaimed by age, same TTL-by-mtime pattern as the existing
+    file-based acquire_lock() above -- not a new mechanism, the same one
+    scoped to a single turn instead of the whole process.
+    """
+    now = now_utc()
+    row = conn.execute(
+        "SELECT started_at FROM turn_in_progress WHERE session_id=? AND turn_n=?",
+        (session_id, turn_n),
+    ).fetchone()
+    if row is not None:
+        started_at = dt.datetime.fromisoformat(row[0])
+        age_min = (now - started_at).total_seconds() / 60
+        if age_min < ttl_min:
+            return False
+        log(f"Stale turn reservation {session_id}/{turn_n} (age={age_min:.0f}m > "
+            f"ttl={ttl_min}m) — reclaiming", "WARN")
+    conn.execute(
+        "INSERT OR REPLACE INTO turn_in_progress "
+        "(session_id, turn_n, started_at, holder_pid) VALUES (?,?,?,?)",
+        (session_id, turn_n, now.isoformat(), os.getpid()),
+    )
+    conn.commit()
+    return True
+
+
+def _release_turn_reservation(conn: sqlite3.Connection, session_id: str, turn_n: int) -> None:
+    """Always called in a `finally` around the reserved work — on success the
+    permanent processed_turns row already makes this row irrelevant; on
+    failure this is what lets the NEXT tick retry instead of waiting out the
+    full TTL."""
+    conn.execute(
+        "DELETE FROM turn_in_progress WHERE session_id=? AND turn_n=?",
+        (session_id, turn_n),
     )
     conn.commit()
 
@@ -1755,6 +1928,16 @@ def session_mode_main(workdir: Path, dry_run: bool) -> None:
         log(f"Pending session turns: {len(pending)}")
 
         for session_id, thread_file, meta_file, fm, turn_n in pending:
+            # bug-2026-07-27-session-dispatcher-duplicate-turn-race: reserve
+            # BEFORE calling into the (possibly minutes-long) turn processor,
+            # not just check _is_turn_processed inside it after the fact --
+            # see _try_reserve_turn for why. dry_run never does real work, so
+            # it skips the reservation dance entirely rather than blocking a
+            # real concurrent attempt for no reason.
+            if not dry_run and not _try_reserve_turn(db_conn, session_id, turn_n):
+                log(f"Turn {turn_n} reservation held by a concurrent run "
+                    f"for {session_id} — skip", "WARN")
+                continue
             try:
                 _process_session_turn(
                     session_id=session_id,
@@ -1770,6 +1953,9 @@ def session_mode_main(workdir: Path, dry_run: bool) -> None:
                 log(f"Error session {session_id} turn {turn_n}: {exc}", "ERROR")
                 import traceback
                 log(traceback.format_exc(), "ERROR")
+            finally:
+                if not dry_run:
+                    _release_turn_reservation(db_conn, session_id, turn_n)
     finally:
         db_conn.close()
     log("Session mode dispatcher done")
@@ -1782,9 +1968,9 @@ def session_mode_main(workdir: Path, dry_run: bool) -> None:
 #   - Read: GitHub Contents API + ETag conditional polling (304 не считается в rate-limit).
 #   - Write: GitHub Git Data API (blob → tree → commit → ref) — atomic commit thread+meta
 #     без локального клона. Retry-on-422 (non-fast-forward) — first-class.
-#   - Deploy: dispatcher.py выкатывается на tsekh-1 через scp/CI без локального клона репо.
+#   - Deploy: dispatcher.py выкатывается на удалённый сервер через scp/CI без локального клона репо.
 #   - Heartbeat: inline _emit_event (stdlib).
-#   - ETag cache: SQLite на tsekh-1 (~/.iwe/dispatcher-etags.db).
+#   - ETag cache: SQLite на удалённом сервере (~/.iwe/dispatcher-etags.db).
 # See: sessions/2026-05/2026-05-30-36-dispatcher-unification-cleanup/report.md §4.
 import hashlib
 
@@ -2056,7 +2242,7 @@ def _gh_atomic_commit(
 
 
 def _pick_tg_token(target_bot: str | None) -> str:
-    """Per-bot TG routing (backport tsekh, WP-358 Ф10.7).
+    """Per-bot TG routing (backport, WP-358 Ф10.7).
 
     target_bot: 'pilot' | 'prod' | None.
     Возвращает первый non-empty: TG_BOT_TOKEN_<TARGET>, TELEGRAM_BOT_TOKEN.
@@ -2070,7 +2256,7 @@ def _pick_tg_token(target_bot: str | None) -> str:
 
 
 def _send_tg_with_routing(chat_id: int, text: str, target_bot: str | None) -> bool:
-    """TG send с per-bot routing (backport tsekh)."""
+    """TG send с per-bot routing (backport, WP-358 Ф10.7)."""
     tok = _pick_tg_token(target_bot)
     if not tok:
         log(f"No TG token for target_bot={target_bot} — skip", "WARN")
@@ -2088,7 +2274,7 @@ def _send_tg_with_routing(chat_id: int, text: str, target_bot: str | None) -> bo
 
 
 def _detect_api_unavailable(stderr: str, stdout: str) -> tuple[bool, str | None]:
-    """Backport tsekh: detect API unavailable (5xx, network), extract recovery hint.
+    """Backport, WP-358 Ф10.7: detect API unavailable (5xx, network), extract recovery hint.
 
     Returns (is_unavailable, recovery_message).
     """
@@ -2108,7 +2294,7 @@ def _detect_api_unavailable(stderr: str, stdout: str) -> tuple[bool, str | None]
 
 def _write_system_reply(session_id: str, turn_n: int, reason: str,
                        message: str, recovery_hint: str | None = None) -> str:
-    """Backport tsekh: формат системного ответа для 4xx/5xx (вместо Claude-ответа)."""
+    """Backport, WP-358 Ф10.7: формат системного ответа для 4xx/5xx (вместо Claude-ответа)."""
     parts = [f"⚠️ Сервис временно недоступен: {reason}"]
     if recovery_hint:
         parts.append(f"Попробуйте {recovery_hint}.")
@@ -2351,17 +2537,34 @@ def session_mode_main_api(dry_run: bool) -> None:
                     continue
                 turns = _parse_thread(thread_text)
                 for turn in turns:
-                    if (turn["role"] == "pilot"
-                            and not _is_turn_processed(db_conn, session_id, turn["n"])):
+                    if turn["role"] != "pilot" or _is_turn_processed(db_conn, session_id, turn["n"]):
+                        continue
+                    turn_n = turn["n"]
+                    # bug-2026-07-27-session-dispatcher-duplicate-turn-race: this
+                    # is the exact call site the incident traced back to -- a
+                    # concurrent tick's GitHub Contents API read of thread_text
+                    # can lag a just-pushed commit, so the _is_turn_processed
+                    # check two lines up is not enough on its own (both ticks
+                    # read "not yet processed" from their own stale/fresh view).
+                    # Reserving here, before the minutes-long agent call, closes
+                    # that window regardless of which side was stale.
+                    if not dry_run and not _try_reserve_turn(db_conn, session_id, turn_n):
+                        log(f"Turn {turn_n} reservation held by a concurrent run "
+                            f"for {session_id} — skip", "WARN")
+                        break  # another run already owns this session's next turn
+                    try:
                         _process_session_turn_api(
                             session_id=session_id,
                             fm=fm,
-                            turn_n=turn["n"],
+                            turn_n=turn_n,
                             thread_text=thread_text,
                             db_conn=db_conn,
                             dry_run=dry_run,
                         )
-                        break  # one turn at a time per session
+                    finally:
+                        if not dry_run:
+                            _release_turn_reservation(db_conn, session_id, turn_n)
+                    break  # one turn at a time per session
             except Exception as exc:
                 log(f"Error session {session_id}: {exc}", "ERROR")
                 import traceback

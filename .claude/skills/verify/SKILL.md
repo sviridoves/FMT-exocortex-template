@@ -5,6 +5,7 @@ argument-hint: "[code|archgate|capture|pack|wp|chain|adversarial|subsection|sect
 version: 1.0.0
 layer: L1
 status: active
+browser_safe: false
 triggers:
   slash: [/verify]
   phrases: []
@@ -31,6 +32,17 @@ gates_rationale: "операционный скилл; WP Gate применим 
 Верификация артефакта по эталону из Pack. Загружает роль VR.R.001 (Верификатор) с context isolation — проверяет результат, а не процесс создания.
 
 ## Algorithm
+
+## Extensions `before`
+
+```bash
+bash .claude/scripts/load-extensions.sh verify before
+```
+
+Код `0` → прочитать каждый путь в алфавитном порядке и выполнить инструкции до
+выбора типа проверки. Код `1` → расширений нет. Любой другой код или ошибка
+обязательного шага расширения → верификацию не начинать и показать настоящую
+причину.
 
 ## Шаг 0. Определить тип проверки
 
@@ -93,7 +105,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
   - `01B-distinctions.md` с маркером `**Maturity:** seed` (Ф3: seed-маркер + mature-lite чек-лист)
 - Передать sub-agent'у промпт: `verify-pack-adequacy-subsection.md` + данные из контекста
 - Модель sub-agent'а: Sonnet
-- **Verdict**: PASS/CONDITIONAL/FAIL по координатам D1-D11 (WP-474 §4)
+- **Verdict**: `DPFPackageAdequacyStatus` — `admissibleForDeclaredDPFUse` / `seedOnly` / `repairBeforeDPFUse` (авто) + эскалационные `holdForPFADDecision` / `holdForCoreAmendmentDecision` / `refreshNeeded` — по координатам D1-D11, порядковая шкала 0-5 (WP-474 Ф8.1/Ф8.3, пир-сессия 2026-09-05-27)
 
 **Для `wp`:**
 - Прочитать WP context file (`{{GOVERNANCE_REPO}}/inbox/WP-{N}-*.md`)
@@ -132,7 +144,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
 > Двухэтапная проверка: 🔴 машинная (оркестратор) → 🟡 семантическая (sub-agent). 🟢 пилот не делается агентом.
 
 **Переменные окружения:**
-- `IWE_ROOT` — корень рабочей директории (default: `$HOME/IWE`). Используется для путей к Pack и `DS-principles-curriculum`.
+- `IWE_ROOT` — корень рабочей директории (default: `${IWE_WORKSPACE:-$HOME/IWE}`). Используется для путей к Pack и `DS-principles-curriculum`.
 
 **Hotfix-исключение:** если последний коммит содержит `[hotfix]` в message — запускается только 🔴, без 🟡 (см. CHECKLIST-subsection-v1.md §«Правило»).
 
@@ -141,7 +153,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
 - **Этап 🔴 (оркестратор, локально):**
   ```bash
   IWE_ROOT="${IWE_ROOT:-$HOME/IWE}"
-  cd "$IWE_ROOT/DS-principles-curriculum"
+  (cd "$IWE_ROOT/DS-principles-curriculum"
   PACK_FORM_089="$IWE_ROOT/PACK-personal/pack/personal-development/02-domain-entities/formalizations/PD.FORM.089-learner-rcs.md"
   # 1. Структура (A.1-A.11) + контракт Портного (B.1-B.9)
   python3 tools/v4-lint.py porter <subsection.md>
@@ -156,6 +168,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
   grep -l "$(basename <subsection.md>)" "$IWE_ROOT/aisystant/docs" 2>/dev/null || \
     echo "F.3 WARN: файл может быть не в правильном репо"
   # F.4 (формат «Степени мастерства» — таблица, не список) проверяется вручную или в 🟡
+  )
   ```
   - Любой FAIL → verdict `FAIL` с диагностикой из stderr, sub-agent НЕ запускается
   - Все PASS → перейти к 🟡
@@ -195,11 +208,12 @@ gates_rationale: "операционный скилл; WP Gate применим 
 - **Этап 🔴 (оркестратор):**
   ```bash
   IWE_ROOT="${IWE_ROOT:-$HOME/IWE}"
-  cd "$IWE_ROOT/DS-principles-curriculum"
+  (cd "$IWE_ROOT/DS-principles-curriculum"
   # 1. Структурная полнота раздела (A.1-A.4, B.1-B.3, C.1-C.2)
   python3 tools/v4-lint.py section --id <section-id> specs/v4-reference/
   # 2. Связность prerequisites внутри раздела (отдельная проверка B.1-B.3, дублирует часть section)
   python3 tools/v4-lint.py prerequisites-graph --scope section --id <section-id> specs/v4-reference/
+  )
   ```
   - Любой FAIL → verdict `FAIL`
   - PASS → перейти к 🟡
@@ -229,7 +243,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
 - **Этап 🔴 (оркестратор):**
   ```bash
   IWE_ROOT="${IWE_ROOT:-$HOME/IWE}"
-  cd "$IWE_ROOT/DS-principles-curriculum"
+  (cd "$IWE_ROOT/DS-principles-curriculum"
   PACK_FORM_089="$IWE_ROOT/PACK-personal/pack/personal-development/02-domain-entities/formalizations/PD.FORM.089-learner-rcs.md"
   GUIDE_ID="<guide-id>"   # PD.GUIDE.<N> или N (1-4)
   # 1. Структурная полнота руководства (A.1-A.5, B.1-B.4, C.1-C.3)
@@ -240,6 +254,7 @@ gates_rationale: "операционный скилл; WP Gate применим 
   python3 tools/v4-lint.py graph build --scope guide --id "$GUIDE_ID" --out-json /tmp/guide-graph.json specs/v4-reference/
   # 4. Pack-drift на масштабе руководства (если не прошло через cmd_guide --pack)
   python3 tools/v4-lint.py pack-drift --scope guide --id "$GUIDE_ID" --pack "$PACK_FORM_089" specs/v4-reference/
+  )
   ```
   - Любой FAIL → verdict `FAIL`
   - PASS → перейти к 🟡
@@ -291,6 +306,17 @@ Sub-agent получает промпт с заполненными данным
 
 ## Шаг 3. Verdict
 
+До формирования итогового verdict выполнить Extensions `checks`:
+
+```bash
+bash .claude/scripts/load-extensions.sh verify checks
+```
+
+Код `0` → прочитать и выполнить каждый файл поверх результатов основного
+проверяющего. Код `1` → дополнительных проверок нет. Любой другой код или провал
+проверки → итог не может быть `PASS`; вернуть `FAIL` с именем расширения и
+наблюдаемой причиной.
+
 Sub-agent возвращает verdict:
 
 ```
@@ -329,6 +355,16 @@ Sub-agent возвращает verdict:
 - **Принять** → продолжить работу
 - **Исправить** → внести изменения по рекомендациям
 - **Отклонить verdict** → аргументировать почему (→ feedback для обучения)
+
+После показа результата выполнить Extensions `after`:
+
+```bash
+bash .claude/scripts/load-extensions.sh verify after
+```
+
+Код `0` → прочитать и выполнить файлы в алфавитном порядке. Код `1` →
+расширений нет. Ошибка `after` не переписывает уже показанный verdict, но
+обязательно выводится отдельным предупреждением с именем расширения и причиной.
 
 <!-- USER-SPACE -->
 <!-- /USER-SPACE -->

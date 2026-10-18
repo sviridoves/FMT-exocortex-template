@@ -79,6 +79,22 @@ validate_file() {
         fi
     done
 
+    # Проверка 2b (#513): каноническая форма — плоская. Вложенный metadata:
+    # (его пишет системная инструкция Claude Code, запретить нельзя) читается
+    # единым reader'ом; конфликт «один ключ в обеих формах с разными
+    # значениями» — ошибка, тихий приоритет запрещён.
+    if awk '/^---/{f++; next} f!=1{next} /^metadata:[ \t\r]*$/{found=1; exit} END{exit !found}' "$file"; then
+        for field in $REQUIRED_FIELDS; do
+            flat=$(awk '/^---/{f++; next} f!=1{next} /^'"$field"':/{gsub(/^[^:]+: */,""); gsub(/["'"'"']/,""); print; exit}' "$file")
+            nested=$(awk '/^---/{f++; next} f!=1{next} /^metadata:[ \t\r]*$/{m=1; next} m && /^[^ \t]/{m=0} m && /^[ \t]+'"$field"':/{gsub(/^[ \t]*[^:]+: */,""); gsub(/["'"'"']/,""); print; exit}' "$file")
+            if [ -n "$flat" ] && [ -n "$nested" ] && [ "$flat" != "$nested" ]; then
+                errs="$errs\n  ❌ конфликт форм: '$field' задан и плоско ('$flat'), и в metadata: ('$nested')"
+                errors=$((errors + 1))
+            fi
+        done
+        [ "${QUIET:-0}" -eq 0 ] && echo "  ℹ️  $file: вложенная форма metadata: (канонична плоская — spec §3); reader нормализует, перезапись сериализует плоско"
+    fi
+
     # Проверка 3: допустимые значения type
     type_val=$(get_field "$file" "type")
     if [ -n "$type_val" ]; then
@@ -140,6 +156,25 @@ validate_file() {
     schema_ver=$(get_field "$file" "schema_version")
     if [ -n "$schema_ver" ] && [ "$schema_ver" != "1" ]; then
         errs="$errs\n  ⚠️  schema_version=$schema_ver (текущая=1, нужна миграция через memory-migrate.sh)"
+    fi
+
+    # Проверка 9 (issue #736, дизайн-сессия с Codex): type=lesson без review_at
+    # или без обобщения на будущее поведение — это хроника одного инцидента,
+    # не системный урок. Останавливаем запись такого файла в момент создания,
+    # не полагаясь на последующую уборку (spec §3 инварианты).
+    if [ "$type_val" = "lesson" ]; then
+        review_at=$(get_field "$file" "review_at")
+        if [ -z "$review_at" ]; then
+            errs="$errs\n  ❌ type=lesson но поле review_at отсутствует (spec §3)"
+            errors=$((errors + 1))
+        elif ! echo "$review_at" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+            errs="$errs\n  ❌ review_at='$review_at' не соответствует формату YYYY-MM-DD"
+            errors=$((errors + 1))
+        fi
+        if ! grep -qE '\*\*(Как применять|How to apply):\*\*' "$file"; then
+            errs="$errs\n  ❌ type=lesson но в тексте нет маркера **Как применять:** / **How to apply:** (spec §3)"
+            errors=$((errors + 1))
+        fi
     fi
 
     if [ $errors -eq 0 ]; then

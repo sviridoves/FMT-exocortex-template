@@ -8,8 +8,13 @@ set -uo pipefail
 # -o pipefail: catch errors in pipelines
 # Intentionally no -e: we collect errors across blocks, not abort on first failure.
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/day-open-hooks.sh
+. "$SCRIPT_DIR/lib/day-open-hooks.sh"
+
 IWE="${IWE_ROOT:-$HOME/IWE}"
-CHECKS_FILE="$IWE/extensions/day-open.checks.md"
+IWE_TEMPLATE="${IWE_TEMPLATE:-$IWE/FMT-exocortex-template}"
+EXT_DIR="$IWE/extensions"
 DAYPLAN="${1:-}"
 
 # Find current DayPlan if not provided
@@ -27,33 +32,58 @@ export CFG="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/day-rhythm-config
 export HOME
 export IWE
 
-ERR_FILE=$(mktemp)
+# Universal checks belong to the template; user checks are additional. The old
+# fallback let any custom split file (including an agent-only file) replace the
+# baseline, so a truncated DayPlan could pass with zero universal checks.
+# Discover each set separately and run the baseline last, so it validates the
+# final DayPlan even if a custom bash block changed it. No user file is copied,
+# changed, or ignored (issue #635's preserve requirement).
+TEMPLATE_EXT_DIR="$IWE_TEMPLATE/extensions"
+BASELINE_FILES=$(find_day_open_hook_files "$TEMPLATE_EXT_DIR" "checks")
+BASELINE_STATUS=$?
+if [ "$BASELINE_STATUS" -ne 0 ] || [ -z "$BASELINE_FILES" ]; then
+  echo "❌ day-open-checks-runner: no template day-open.checks*.md found in $TEMPLATE_EXT_DIR — universal checks unavailable. Commit BLOCKED."
+  exit 1
+fi
+USER_FILES=$(find_day_open_hook_files "$EXT_DIR" "checks")
+USER_STATUS=$?
+if [ "$USER_STATUS" -ne 0 ]; then
+  echo "❌ day-open-checks-runner: could not enumerate $EXT_DIR — user checks may be missing. Commit BLOCKED."
+  exit 1
+fi
 
-# Extract and execute each bash block from checks.md
-awk '
-/^```bash$/ { block=""; in_block=1; next }
-/^```$/     { if(in_block){ print block; print "\x00" }; in_block=0; next }
-in_block    { block = block $0 "\n" }
-' "$CHECKS_FILE" | while IFS= read -r -d '' block; do
-  # Execute block in subshell with set -e so any error is caught
-  (
-    set -e
-    eval "$block"
-  ) 2>&1
-  EXIT=$?
-  if [ $EXIT -ne 0 ]; then
-    echo "1" >> "$ERR_FILE"
-  fi
-done
+CHECKS_FILES="$BASELINE_FILES"
+if [ "$(cd "$TEMPLATE_EXT_DIR" && pwd -P)" = "$(cd "$EXT_DIR" && pwd -P)" ]; then
+  # A self-contained checkout may use one directory as both template and
+  # workspace. The discovery sets then contain the same files: run each once.
+  echo "  ℹ️  Template and workspace checks share $EXT_DIR — running each file once"
+elif [ -n "$USER_FILES" ]; then
+  CHECKS_FILES=$(printf '%s\n%s' "$USER_FILES" "$BASELINE_FILES")
+  echo "  ℹ️  Running user checks from $EXT_DIR, then template checks from $TEMPLATE_EXT_DIR"
+else
+  echo "  ℹ️  $EXT_DIR has no day-open.checks*.md — using template checks from $TEMPLATE_EXT_DIR"
+fi
 
-ERRORS=$(wc -l < "$ERR_FILE" | tr -d ' ')
-rm -f "$ERR_FILE"
+# Not `run_day_open_hook_files ... || { ... }` — see scripts/day-open-hooks-runner.sh
+# for why a function call inside `||`/`if`/`!` suppresses `errexit` transitively,
+# including in a nested subshell that re-declares `set -e` (Codex review,
+# 2026-08-28). Capture the exit status as its own statement first.
+run_day_open_hook_files "$CHECKS_FILES"
+RUN_STATUS=$?
+if [ "$RUN_STATUS" -ne 0 ]; then
+  echo "❌ day-open-checks-runner: could not track check results (mktemp failure). Commit BLOCKED."
+  exit 1
+fi
+if [ "$DAYOPEN_HOOK_BLOCKS_RUN" -eq 0 ]; then
+  echo "❌ day-open-checks-runner: no executable bash checks ran. Commit BLOCKED."
+  exit 1
+fi
 
-if [ "$ERRORS" -gt 0 ]; then
+if [ "$DAYOPEN_HOOK_BLOCKS_FAILED" -gt 0 ]; then
   echo ""
-  echo "❌ day-open-checks-runner: $ERRORS block(s) failed. Commit BLOCKED."
+  echo "❌ day-open-checks-runner: $DAYOPEN_HOOK_BLOCKS_FAILED/$DAYOPEN_HOOK_BLOCKS_RUN block(s) failed. Commit BLOCKED."
   exit 1
 else
-  echo "✅ day-open-checks-runner: all checks passed."
+  echo "✅ day-open-checks-runner: all $DAYOPEN_HOOK_BLOCKS_RUN check(s) passed."
   exit 0
 fi

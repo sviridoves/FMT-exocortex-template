@@ -23,6 +23,7 @@
 #   3 — overlay-реестр не найден
 #   4 — отсутствуют source-файлы из реестра
 #   5 — drift detected (только в --diff режиме при найденных расхождениях)
+#   7 — отсутствует обязательное значение runtime-конфигурации
 #
 # WP-273 Этап 2 Ф18. ArchGate v2 → F (Generated runtime).
 
@@ -52,6 +53,15 @@ hash_dir() {
     else
         find "$dir" -type f -not -name '.build-hash' | sort | xargs sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1
     fi
+}
+
+# Copy of update.sh:is_protected_user_file() — build-runtime.sh runs as a separate
+# subprocess (not sourced), so the two lists must be kept in sync manually (issue #327).
+is_protected_user_file() {
+    case "$1" in
+        params.yaml|memory/MEMORY.md|.claude/settings.local.json|sessions/00-index.md) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
 # === Detect directories ===
@@ -144,8 +154,24 @@ fi
 # === Load .exocortex.env ===
 # Safe parse: только KEY=VALUE, никакого eval/source.
 # Bash 3.2-compatible: используем функцию env_get вместо associative array.
+# issue #319: значения в .exocortex.env конвенционально в кавычках
+# (WORKSPACE_DIR="/home/iwe/IWE") — без strip кавычки попадали буквально в
+# каждую substituted-подстановку. Снимаем только ПАРНЫЕ внешние кавычки
+# (один и тот же символ в начале и в конце), внутренние не трогаем.
 env_get() {
-    grep "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-
+    local raw
+    raw=$(grep "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d'=' -f2-)
+    # launchd не передаёт USER/LOGNAME в job, но build выполняется в
+    # интерактивной системе, где Unix login доступен надёжно. Явное значение
+    # из env-файла сохраняет приоритет для нестандартных установок.
+    if [ -z "$raw" ] && [ "$1" = "USER_NAME" ]; then
+        raw=$(id -un 2>/dev/null || true)
+    fi
+    case "$raw" in
+        \"*\") [ ${#raw} -ge 2 ] && raw="${raw#\"}" && raw="${raw%\"}" ;;
+        \'*\') [ ${#raw} -ge 2 ] && raw="${raw#\'}" && raw="${raw%\'}" ;;
+    esac
+    printf '%s' "$raw"
 }
 
 # === Parse overlay-реестр ===
@@ -178,10 +204,21 @@ if [ "${#SUBSTITUTED_FILES[@]}" -eq 0 ] && [ "${#COPIED_FILES[@]}" -eq 0 ]; then
     exit 3
 fi
 
+# USER/LOGNAME are absent from launchd's minimal environment. They are rendered
+# during the build from explicit configuration or the current Unix login.
+if [ -z "$(env_get USER_NAME)" ]; then
+    echo "ERROR: cannot determine USER_NAME to render launchd jobs." >&2
+    echo "Set USER_NAME in .exocortex.env or run the build as a Unix user." >&2
+    exit 7
+fi
+
 # === Verify source files exist in FMT ===
 MISSING=()
 for f in "${SUBSTITUTED_FILES[@]}" "${COPIED_FILES[@]}"; do
-    [ -f "$TEMPLATE_DIR/$f" ] || MISSING+=("$f")
+    # issue #348: a user-owned workspace file ships as <name>.example (see
+    # copy_to_workspace_file below) — accept either name here, or this pre-flight
+    # rejects the very layout the fix introduces.
+    [ -f "$TEMPLATE_DIR/$f" ] || [ -f "$TEMPLATE_DIR/$f.example" ] || MISSING+=("$f")
 done
 
 if [ "${#MISSING[@]}" -gt 0 ]; then
@@ -201,10 +238,18 @@ fi
 trap "rm -rf '$BUILD_DIR'" EXIT
 
 # Hash inputs (FMT files + .exocortex.env) for build-stamp
+resolve_overlay_source() {
+    local rel="$1"
+    local src="$TEMPLATE_DIR/$rel"
+    [ -f "$src" ] || src="$TEMPLATE_DIR/$rel.example"
+    [ -f "$src" ] || { echo "ERROR: overlay source missing for $rel" >&2; return 1; }
+    printf '%s\n' "$src"
+}
+
 INPUT_HASH=$(
     {
         for f in "${SUBSTITUTED_FILES[@]}" "${COPIED_FILES[@]}"; do
-            hash_file "$TEMPLATE_DIR/$f"
+            hash_file "$(resolve_overlay_source "$f")"
             echo "$f"
         done
         hash_file "$ENV_FILE"
@@ -212,7 +257,7 @@ INPUT_HASH=$(
     } | hash_file /dev/stdin 2>/dev/null || \
     {
         for f in "${SUBSTITUTED_FILES[@]}" "${COPIED_FILES[@]}"; do
-            hash_file "$TEMPLATE_DIR/$f"
+            hash_file "$(resolve_overlay_source "$f")"
             echo "$f"
         done
         hash_file "$ENV_FILE"
@@ -220,12 +265,13 @@ INPUT_HASH=$(
     } | (command -v shasum >/dev/null && shasum -a 256 || sha256sum) | cut -d' ' -f1
 )
 
-FMT_VERSION=$(grep -m1 '^## \[' "$TEMPLATE_DIR/CHANGELOG.md" | sed 's/.*\[\(.*\)\].*/\1/')
+FMT_VERSION=$(grep '^## \[' "$TEMPLATE_DIR/CHANGELOG.md" | grep -v '^## \[Unreleased\]' | head -1 | sed 's/.*\[\(.*\)\].*/\1/')
 
 # === Apply substitutions ===
 build_substituted_file() {
     local rel="$1"
-    local src="$TEMPLATE_DIR/$rel"
+    local src
+    src=$(resolve_overlay_source "$rel") || return 1
     local dst="$BUILD_DIR/runtime/$rel"
     mkdir -p "$(dirname "$dst")"
     cp "$src" "$dst"
@@ -256,8 +302,14 @@ build_substituted_file() {
 
 copy_to_workspace_file() {
     local rel="$1"
-    local src="$TEMPLATE_DIR/$rel"
+    local src
+    src=$(resolve_overlay_source "$rel") || return 1
     local dst="$BUILD_DIR/workspace/$rel"
+    # issue #348: a workspace file that belongs to the user (params.yaml) ships as
+    # <name>.example and is git-ignored under its working name — otherwise the
+    # template repo owns a file it has declared to be the user's, and a fork's pull
+    # puts the upstream defaults back over the user's edits. Destination name is
+    # unchanged; only the source in the template carries the .example suffix.
     mkdir -p "$(dirname "$dst")"
     cp "$src" "$dst"
     case "$dst" in *.sh) chmod +x "$dst" ;; esac
@@ -356,8 +408,62 @@ fi
 
 mv "$BUILD_DIR/runtime" "$RUNTIME_DIR"
 
-# Cleanup old runtime
-[ -d "$RUNTIME_OLD" ] && rm -rf "$RUNTIME_OLD"
+# bug-2026-09-02-build-runtime-wipes-live-session-state: .iwe-runtime/ is
+# documented above as build-only (.build-hash, .build-version, roles/), but
+# session-guard.sh and friends also keep LIVE, non-regenerable state directly
+# under it (sessions/, isolate-push-attempts/, close-obligation/ — observed
+# live, not an exhaustive list). A plain "swap + rm -rf the old tree" silently
+# destroyed other agents' open-session markers on 2026-09-02. Carry forward
+# any top-level entry the fresh build did not itself produce, instead of
+# assuming the whole old tree is disposable.
+#
+# bug-2026-09-17-tsekh1-recovery-backups-abort: under `set -eu`, a single
+# failed `mv` (e.g. permission denied on a root-owned entry inherited from an
+# earlier root-privileged operation) used to abort this whole script — losing
+# any not-yet-processed live entries and skipping the `rm -rf` below entirely,
+# leaving `$RUNTIME_OLD` orphaned on disk indefinitely (live incident: a
+# month-old root:root `recovery-backups/` blocked the carry-forward, and
+# `.iwe-runtime.old.<pid>` from that run is still there). Failing one entry
+# must not cost the rest.
+CARRY_FORWARD_FAILURES=0
+if [ -d "$RUNTIME_OLD" ]; then
+    while IFS= read -r entry; do
+        [ -e "$RUNTIME_DIR/$entry" ] && continue
+        if ! mv "$RUNTIME_OLD/$entry" "$RUNTIME_DIR/$entry" 2>/dev/null; then
+            echo "  ⚠ не удалось перенести $RUNTIME_OLD/$entry в $RUNTIME_DIR/ (владелец/права?) — оставлен на месте, перенесите вручную (например через sudo)" >&2
+            CARRY_FORWARD_FAILURES=$((CARRY_FORWARD_FAILURES + 1))
+        fi
+    done < <(find "$RUNTIME_OLD" -mindepth 1 -maxdepth 1 -exec basename {} \;)
+    if [ "$CARRY_FORWARD_FAILURES" -eq 0 ]; then
+        rm -rf "$RUNTIME_OLD"
+    else
+        echo "  ⚠ $RUNTIME_OLD оставлен на диске — $CARRY_FORWARD_FAILURES запис(ь/и) не перенеслись, живые данные внутри могут быть неполными" >&2
+    fi
+fi
+
+# bug-2026-09-17-tsekh1-recovery-backups-abort (продолжение): leftovers from
+# a PAST crashed run (different pid, e.g. `.iwe-runtime.old.4079200` sitting
+# next to `.iwe-runtime.old.$$` right now) are not this run's responsibility
+# to delete blindly — a directory named "recovery-backups" is presumably
+# there on purpose, and deleting other processes' state without knowing
+# whether they're mid-flight is its own risk. Surface them instead of hiding
+# the debt again: this is the "no owner ever notices" gap the same incident
+# found, closed by visibility rather than by silent auto-delete.
+STALE_OLD_DIRS=""
+for candidate in "${RUNTIME_DIR}".old.*; do
+    [ -d "$candidate" ] || continue
+    [ "$candidate" = "$RUNTIME_OLD" ] && continue
+    STALE_OLD_DIRS="${STALE_OLD_DIRS}${STALE_OLD_DIRS:+, }$candidate"
+done
+# НЕ гейтить $QUIET (в отличие от обычных info-сообщений в этом скрипте):
+# update.sh — единственный регулярный маршрут вызова build-runtime.sh — зовёт
+# его именно с --quiet (issue найден cold-review той же сессии), а это
+# предупреждение существует ровно для того, чтобы не потонуть молча в этом
+# самом вызове.
+if [ -n "$STALE_OLD_DIRS" ]; then
+    echo "  ⚠ найдены зависшие каталоги от прошлых прерванных пересборок: $STALE_OLD_DIRS"
+    echo "    проверьте содержимое и удалите вручную (может требоваться sudo), если оно больше не нужно"
+fi
 
 # Lock освобождается автоматически при exit (FD 9 закрывается)
 
@@ -367,9 +473,18 @@ for f in "${COPIED_FILES[@]}"; do
     src="$BUILD_DIR/workspace/$f"
     dst="$WORKSPACE_DIR/$f"
     mkdir -p "$(dirname "$dst")"
-    if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+    if [ -f "$dst" ] && is_protected_user_file "$f"; then
+        : # skip — protected file already exists, seed-on-first-install only (issue #327)
+    elif [ -f "$dst" ] && cmp -s "$src" "$dst"; then
         : # skip — identical
     else
+        # issue #348: seeding a protected user file used to be silent, so a workspace
+        # that had lost its params.yaml (layout migration, interrupted setup) got the
+        # template default back with no trace — indistinguishable from "update.sh
+        # overwrote my settings". Say it out loud when it happens.
+        if is_protected_user_file "$f" && [ ! -f "$dst" ]; then
+            $QUIET || echo "  ⚠ $f отсутствовал в $WORKSPACE_DIR — засеян значениями шаблона. Ваши прежние настройки в нём НЕ восстановлены."
+        fi
         cp "$src" "$dst"
         COPIED_COUNT=$((COPIED_COUNT + 1))
     fi

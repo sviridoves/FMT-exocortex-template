@@ -48,7 +48,7 @@
 - Прочитай QA-отчёт бота: `DS-agent-workspace/scheduler/feedback-triage/` (последний по дате) — **структурированный отчёт** из feedback_triage DB: замечания (✏️) первые, urgent (high/critical) вторые, кластеры проблем третьи. Auto-triage уже выполнен ботом → Session-Prep проверяет кластеры (≥3 = **urgent** → WP-debt) и помечает resolved
 - Для каждой заметки/файла определи: → в план недели? → capture в Pack? → в повестку для обсуждения? → удалить?
 - **Недельная агрегация Inbox Triage:**
-  > Это НЕ дубль ежедневного triage Note-Review. Note-Review классифицирует заметки и пишет предложения в целевые документы. Session-Prep агрегирует результаты за неделю из этих документов + добавляет unsatisfied-questions.
+  > Это НЕ дубль разбора заметок (Note-Review запускается только вручную). Note-Review классифицирует заметки и пишет предложения в целевые документы. Session-Prep агрегирует результаты за неделю из этих документов + добавляет unsatisfied-questions.
   1. Собери ВСЕ оставшиеся `🔄` заметки (идеи, висящие >7 дней)
   2. Собери все непринятые предложения из прошлых Note-Review (если остались в WeekPlan)
   3. Сформируй блок `📋 Inbox Triage (недельный)` с 3 корзинами:
@@ -98,6 +98,7 @@
 - Прочитай `{{GOVERNANCE_REPO}}/docs/Session Agenda.md`
 - Определи: какие нерегулярные блоки применимы на этой неделе? (ретро, архитектура, разбор документа и др.)
 - Если есть — добавь в повестку
+- **Month Close (issue #616):** используй строку «Первый Пн месяца: да/нет» из системного контекста в начале этого промпта — не выводи сам, последний Пн месяца и первый Пн следующего легко перепутать без реальной календарной проверки.
 
 #### 6.5. Контент-план недели (→ секция «Контент-план» в WeekPlan)
 
@@ -118,7 +119,7 @@
 
 1. Перемести предыдущий `WeekPlan W*.md` из `current/` в `archive/week-plans/`
 2. Перемести предыдущий `DayPlan *.md` из `current/` в `archive/day-plans/` (если есть)
-3. ~~WeekReport~~ — отдельный файл больше не создаётся (deprecated). Итоги — секция в WeekPlan.
+3. Перемести предыдущий `WeekReport W*.md` из `current/` в `archive/week-reports/` (issue #596: создаётся week-review.md, Пн 00:00, до этого шага — должен уже лежать в `current/` к моменту session-prep)
 4. Перемести предыдущий `SchedulerReport *.md` из `current/` в `archive/scheduler-reports/` (если есть и не текущий)
 5. **Архивация WP context files (safety net — Close уже архивирует done-файлы):**
    - Для каждого `inbox/WP-*.md` сверь статус с MEMORY.md (source-of-truth)
@@ -126,7 +127,7 @@
    - Если фронтматтер WP-файла не совпадает с MEMORY.md → обновить фронтматтер перед перемещением
 6. **Полная очистка inbox/ (еженедельно, единственный владелец — Session-Prep):**
    - `extraction-reports/` — учитывай `status` во frontmatter (инвариант «capture не исчезает без решения»):
-     - `status ∈ {applied, rejected, no-pending}` и старше 7 дней → удали (решение принято, информация в Pack/feedback-log)
+     - `status ∈ {applied, rejected, no-pending}` и старше 7 дней → **архивируй** в `archive/extraction-reports/` (та же конвенция и владелец чистки, что у captures ниже; НЕ удалять — отчёт это вторая половина того же аудитного следа «capture → решение», issue #507)
      - `status ∈ {pending-review, partially-applied, deferred}` → **не трогай** (ждут разбора через `/apply-captures`)
      - Без frontmatter или без поля `status` → оставить (считать pending-review)
    - `captures.md` — записи с `[processed ...]` старше 14 дней → **архивируй** в `archive/captures/captures-{period}.md` (НЕ удалять — это аудитный след записи в Pack). Записи с `[rejected ...]` старше 14 дней → архивируй туда же.
@@ -229,7 +230,7 @@ agent: Стратег
 
 **Результат:** черновик WeekPlan (`status: draft`) с повесткой сессии в `current/`.
 
-> Следующий шаг: сессия стратегирования с пользователем → `prompts/strategy-session.md`.
+> Следующий шаг: сессия стратегирования с пользователем → диспетчер `.claude/skills/strategy-session/SKILL.md` (`prompts/strategy-session.md` — устаревший, до разделения на weekly/monthly, не используется).
 
 ---
 

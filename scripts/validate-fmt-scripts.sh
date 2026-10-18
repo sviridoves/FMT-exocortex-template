@@ -80,19 +80,47 @@ if [[ "$MODE" != "settings-json" ]]; then
         #   - ${IWE_GOVERNANCE_REPO:-DS-strategy}  (bash default)
         #   - ${IWE_GOVERNANCE_REPO:?...}          (bash required)
         #   - os.environ.get("GOVERNANCE_REPO", "DS-strategy")  (python fallback)
+        #   - os.environ.get("IWE_GOVERNANCE_REPO") or "DS-strategy"
+        #     (python fallback for unset AND empty values, issue #1038)
         #   - GOV_REPO_TMPL="DS-strategy"          (template identity literal)
         #   - VAR="DS-strategy" \                  (env override в команде, line cont)
         #   - cmd || echo "DS-strategy"            (bare fallback после ||, issue #275)
         #   - if [ -d "$DIR/DS-strategy" ]; ... case DS-strategy)  (auto-detect идиома,
         #     физическая проверка существования репо, не хардкод-протечка, issue #275)
+        #   - строка со ссылкой на переменную $IWE_GOVERNANCE_REPO или её dict-ключом
+        #     "IWE_GOVERNANCE_REPO": — структурно демонстрирует переопределение, не
+        #     просто содержит имя переменной где-то в комментарии (issues #446/#450)
+        #   - файл лежит в scripts/tests/ — тестовая фикстура легитимно использует литерал
+        #     дефолтного имени как значение, не как утечку личного репо (issues #446/#450)
         # Запрещено: буквальное имя governance-репо вне fallback-паттерна в исполняемых строках
         # Комментарии (#) пропускаются — документация не влияет на поведение
         #
         # issue #275: паттерны "|| echo <literal>" и "if [ -d .../<literal> ]" исключаются
-        # только когда <literal> встречается на строке РОВНО ОДИН раз — иначе, например,
+        # только когда <литерал> встречается на строке РОВНО ОДИН раз — иначе, например,
         # `cd ".../DS-strategy" || echo "DS-strategy"` (реальный хардкод в cd, замаскированный
         # безопасным fallback-хвостом) прошёл бы незамеченным, т.к. хвост строки матчит
         # safe-паттерн, даже когда начало строки содержит отдельный, опасный хардкод.
+        # issue #759: было `case ... *) <проверка> ;; esac` — три ветки-исключения
+        # no-op'или через `:`, дефолтная ветка несла всю проверку. Добавление
+        # четвёртой ветки вынесено в флаг, проверка осталась одна, ниже case.
+        #
+        # Guard по shebang/+x (обсуждался при закрытии issue) здесь не работает:
+        # файлы .claude/hooks/tests/*.sh — сами настоящие исполняемые тест-
+        # харнессы с shebang (запускаются напрямую), а не фикстуры-как-файл.
+        # Фикстура — это СТРОКОВЫЙ ЛИТЕРАЛ внутри `expect "..." pass '...'`
+        # (аргумент вызова), а не файл целиком; file-level guard не может
+        # отличить литерал от кода внутри одного реального исполняемого файла.
+        # Поэтому исключение здесь — то же безусловное path-based, что и
+        # scripts/tests/* (issues #446/#450): каталог целиком — тестовая
+        # обвязка по конвенции, её содержимое не сканируется.
+        skip_hardcode_check=0
+        case "$f" in
+            scripts/tests/*|*/scripts/tests/*) skip_hardcode_check=1 ;;  # issues #446/#450: фикстуры конвенции scripts/tests/ — не сканировать. Уже, чем */tests/* — другие tests/-каталоги репо (.claude/skills/*/tests/, guide-kit/tests/) продолжают проверяться как обычно.
+            setup/test-*|*/setup/test-*|setup/smoke-test-*|*/setup/smoke-test-*) skip_hardcode_check=1 ;;  # issue #499: тест-обвязки setup/ по именной конвенции — их fail-сообщения и grep-паттерны СОДЕРЖАТ литерал как предмет собственной проверки; классовое путевое исключение (не эвристика по строке), остальной setup/ сканируется как прежде.
+            setup/validate-template.sh|*/setup/validate-template.sh) skip_hardcode_check=1 ;;  # WP-544 Д28: тот же класс, что #499 — этот файл сам сканирует репо на автор-специфичные литералы (проверка [1/5]) через строковой массив в for-цикле; свой собственный список паттернов — предмет проверки, не хардкод. Не цитировать литералы буквально в этом комментарии — это же ловит [1/5] в самом validate-fmt-scripts.sh.
+            .claude/hooks/tests/*|*/.claude/hooks/tests/*) skip_hardcode_check=1 ;;  # issue #759: фикстуры хук-тестов — тот же класс, что scripts/tests/.
+        esac
+        if [ "$skip_hardcode_check" != "1" ]; then
         if grep -q "$AUTHOR_GOV_REPO" "$f" 2>/dev/null; then
             bad_lines=$(grep -n "$AUTHOR_GOV_REPO" "$f" \
                 | grep -v '^\s*#\|^[0-9]*:\s*#' \
@@ -101,12 +129,19 @@ if [[ "$MODE" != "settings-json" ]]; then
                 | grep -vE '^[0-9]*:[[:space:]]*[A-Z_]+_TMPL=' \
                 | grep -vE "os\.environ\.get\([^)]*,[[:space:]]*[\"']" \
                 | grep -vE '^[0-9]*:\s*[A-Z_][A-Z0-9_]*="[^"]*"[[:space:]]*[\\]$' \
+                | grep -vE '\$IWE_GOVERNANCE_REPO|"IWE_GOVERNANCE_REPO"[[:space:]]*:' \
                 || true)
             if [[ -n "$bad_lines" ]]; then
                 bad_lines=$(echo "$bad_lines" | while IFS= read -r bl; do
                     line_content="${bl#*:}"
                     occurrences=$(grep -o "$AUTHOR_GOV_REPO" <<<"$line_content" | wc -l | tr -d ' ')
                     if [[ "$occurrences" -eq 1 ]]; then
+                        # Python's `or` matches shell `${VAR:-default}` for both
+                        # an unset and an empty variable. Require one literal on
+                        # the line so an unrelated hardcode cannot hide next to it.
+                        if echo "$bl" | grep -qE "os\\.environ\\.get\\([\"']IWE_GOVERNANCE_REPO[\"']\\)[[:space:]]+or[[:space:]]+[\"']${AUTHOR_GOV_REPO}[\"']"; then
+                            continue
+                        fi
                         if echo "$bl" | grep -qE "\\|\\|[[:space:]]*echo[[:space:]]+\"$AUTHOR_GOV_REPO\"[[:space:]]*\\)?[[:space:]]*\$"; then
                             continue
                         fi
@@ -115,6 +150,77 @@ if [[ "$MODE" != "settings-json" ]]; then
                         fi
                         if echo "$bl" | grep -qE '^[0-9]*:[[:space:]]*[A-Za-z0-9_*|-]*\|?'"$AUTHOR_GOV_REPO"'\)[[:space:]]*$'; then
                             continue
+                        fi
+                        # auto-detect идиома, продолжение (issue #450): follow-up
+                        # присваивание ВНУТРИ уже безопасного `if [ -d .../LITERAL" ]; then`
+                        # (сам if строкой выше уже matчит паттерн на 2 проверки раньше) — тот
+                        # же физический detect, не отдельный хардкод. Безопасно только для
+                        # голого `VAR="LITERAL"` без хвоста — не расширяет паттерн на строки
+                        # с чем-то ещё после литерала.
+                        if echo "$bl" | grep -qE '^[0-9]*:[[:space:]]*[A-Z_][A-Z0-9_]*="'"$AUTHOR_GOV_REPO"'"[[:space:]]*$'; then
+                            lineno="${bl%%:*}"
+                            prev_line=$(sed -n "$((lineno - 1))p" "$f" 2>/dev/null)
+                            if echo "$prev_line" | grep -qE '^[[:space:]]*if \[ -d "[^"]*/'"$AUTHOR_GOV_REPO"'" \]; then$'; then
+                                continue
+                            fi
+                        fi
+                        # issue #665: bare literal as a positional fallback-default
+                        # argument to a helper call, split across lines —
+                        # `_selected_env(values, "IWE_GOVERNANCE_REPO",
+                        # "GOVERNANCE_REPO", "DS-strategy")`. The literal's own line
+                        # carries no env-var reference, but the call it belongs to
+                        # does (same "structural override, not a mystery hardcode"
+                        # reasoning as the $IWE_GOVERNANCE_REPO exception above).
+                        # Safe only when the override key literal sits in the SAME
+                        # call — walk back through the immediately preceding,
+                        # unbroken run of non-blank, non-comment lines (a blank or
+                        # `#`-only line marks a statement boundary) and stop looking
+                        # there. Cold-context review finding: a plain fixed-size
+                        # lookback window matched an unrelated `#`-comment mention of
+                        # "IWE_GOVERNANCE_REPO" a few lines above a genuine hardcode
+                        # in a different call — the statement-boundary stop closes
+                        # that false negative.
+                        if echo "$bl" | grep -qE '^[0-9]*:[[:space:]]*"'"$AUTHOR_GOV_REPO"'"[[:space:]]*,?[[:space:]]*\)?[[:space:]]*,?[[:space:]]*$'; then
+                            lineno="${bl%%:*}"
+                            found_override_key=0
+                            check_line=$((lineno - 1))
+                            steps=0
+                            while [ "$check_line" -ge 1 ] && [ "$steps" -lt 6 ]; do
+                                context_line=$(sed -n "${check_line}p" "$f" 2>/dev/null)
+                                if echo "$context_line" | grep -qE '^[[:space:]]*$|^[[:space:]]*#'; then
+                                    break
+                                fi
+                                if echo "$context_line" | grep -qE '"IWE_GOVERNANCE_REPO"'; then
+                                    found_override_key=1
+                                    break
+                                fi
+                                check_line=$((check_line - 1))
+                                steps=$((steps + 1))
+                            done
+                            if [ "$found_override_key" -eq 1 ]; then
+                                continue
+                            fi
+                        fi
+                        # issue #1135: the literal's only occurrence sits inside a
+                        # trailing comment that explains why the code earlier on
+                        # the line already covers it (e.g. a shellcheck directive
+                        # reference, another issue number, or a WP- id) — same
+                        # "comments don't affect behavior" contract as the
+                        # whole-line-comment skip above. Two conditions, both
+                        # required: (a) the literal must actually disappear once
+                        # we cut from the first whitespace-preceded `#` onward —
+                        # a hardcode sitting BEFORE that `#`, with an unrelated
+                        # marker word further in the same trailing comment, must
+                        # still be caught; (b) what remains of the comment must
+                        # carry one of the markers actually seen in practice —
+                        # staying a narrow whitelist, not "any trailing comment",
+                        # since a general comment/quote-aware parser is not
+                        # reliable here (a `#` can legitimately sit inside a
+                        # quoted string too).
+                        if ! echo "$bl" | sed -E 's/[[:space:]]#.*$//' | grep -q "$AUTHOR_GOV_REPO"; then
+                            if echo "$bl" | grep -qE '[[:space:]]#.*\b(shellcheck|WP-[0-9]+|issue[[:space:]]*#[0-9]+)\b'; then
+                                continue
+                            fi
                         fi
                     fi
                     echo "$bl"
@@ -125,6 +231,7 @@ if [[ "$MODE" != "settings-json" ]]; then
                 echo "$bad_lines" | head -3 | sed 's/^/     /' >&2
                 errors=$((errors + 1))
             fi
+        fi
         fi
 
         # Проверка 4: set -e + ((VAR++)) без || true → silent exit при VAR==0 (B8 gap)

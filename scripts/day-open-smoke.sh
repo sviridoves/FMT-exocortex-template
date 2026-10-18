@@ -40,7 +40,7 @@ scheduler_pulse() {
   local pulse_file="$DS_STRATEGY/current/.scheduler-last-run"
   if [ -f "$pulse_file" ]; then
     local last_ts
-    last_ts=$(stat -f %m "$pulse_file" 2>/dev/null || stat -c %Y "$pulse_file" 2>/dev/null || echo 0)
+    last_ts=$(stat -c %Y "$pulse_file" 2>/dev/null || stat -f %m "$pulse_file" 2>/dev/null || echo 0)
     local now_ts age_hours
     now_ts=$(date +%s)
     age_hours=$(( (now_ts - last_ts) / 3600 ))
@@ -70,15 +70,30 @@ ke_stats() {
     echo "0 -1"
     return
   fi
-  local count
-  count=$(find "$ke_dir" -maxdepth 1 -type f -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$count" -eq 0 ]; then
+  # Count only reports still waiting (frontmatter status: pending, or legacy
+  # pending-review). Applied reports stay in the folder, so a raw *.md count
+  # never drops to zero and oldest-age tracks history, not the queue (#548).
+  # Parse mirrors ke-queue-stats.sh (first frontmatter block only; body
+  # mentions like '# status: pending' must not count) — keep both in sync.
+  local pending_files count
+  pending_files=$(
+    for f in "$ke_dir"/*.md; do
+      [ -f "$f" ] || continue
+      awk '/^---/{if(seen){exit} seen=1; next} seen && /^status:[[:space:]]*pending(-review)?$/{print FILENAME; exit}' "$f"
+    done
+  )
+  if [ -z "$pending_files" ]; then
     echo "0 0"
     return
   fi
-  # oldest age в днях через stat
+  count=$(printf '%s\n' "$pending_files" | grep -c .)
+  # oldest pending age in days; stat differs between BSD/macOS and GNU/Linux (#548)
   local oldest_ts now_ts age_days
-  oldest_ts=$(find "$ke_dir" -maxdepth 1 -type f -name "*.md" -exec stat -f "%m" {} \; 2>/dev/null | sort -n | head -1)
+  if [ "$(uname -s)" = "Darwin" ]; then
+    oldest_ts=$(printf '%s\n' "$pending_files" | tr '\n' '\0' | xargs -0 stat -f "%m" 2>/dev/null | sort -n | head -1)
+  else
+    oldest_ts=$(printf '%s\n' "$pending_files" | tr '\n' '\0' | xargs -0 stat -c "%Y" 2>/dev/null | sort -n | head -1)
+  fi
   if [ -z "$oldest_ts" ]; then
     echo "$count -1"
     return

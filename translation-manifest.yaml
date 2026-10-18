@@ -37,7 +37,7 @@ exclusions:
     - CLAUDE.md
     - AGENTS.md
     - AGENTS-agent-blocks.md
-    - params.yaml
+    - params.yaml.example
     - PACK-agent-rules
     - PACK-digital-platform
     - PACK-personal
@@ -53,6 +53,7 @@ frontmatter_translate_keys:
   - title
   - description
   - summary
+  - name
 
 # FILE CATEGORIES
 # Д — Documentation: auto-translate via LLM pipeline + glossary
@@ -88,7 +89,7 @@ categories:
       - AGENTS-agent-blocks.md
       - .claude/rules/
       - .claude/skills/**/SKILL.md
-      - params.yaml
+      - params.yaml.example
       - scripts/install-hooks.sh
 
   G:

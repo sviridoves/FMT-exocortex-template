@@ -7,10 +7,10 @@ valid_from: 2026-04-24
 horizon: warm
 domains: [protocol]
 status: active
-owner: user
+owner: platform
 schema_version: 1
 ---
-# Протокол Month Close (ОРЗ-фрактал, 5-й масштаб)
+# Протокол Month Close (ОРЗ-фрактал, масштаб «Месяц» — 4-й из четырёх)
 
 > **Точка входа:** Вызвать Skill `month-close`. Алиас для `/run-protocol month-close`.
 > **Принцип:** Month Close = стадия 7 каскада ВДВ v9 (PD.METHOD.008). Агрегация 4-5 Week Close'ов + переосмысление фазы/калибра. Не повторяет Week Close — читает его выходы.

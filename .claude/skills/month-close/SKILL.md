@@ -5,6 +5,7 @@ argument-hint: ""
 version: 1.0.0
 layer: L1
 status: active
+browser_safe: false
 triggers:
   slash: [/month-close]
   phrases: []
@@ -55,9 +56,9 @@ Month Close = протокол. Исполнять ТОЛЬКО пошагово
 **1b. Коммиты за месяц.**
 
 ```bash
-for repo in $(ls {{HOME_DIR}}/IWE/); do
-  if [ -d {{HOME_DIR}}/IWE/$repo/.git ]; then
-    count=$(git -C {{HOME_DIR}}/IWE/$repo log --since="$MONTH_START" --until="$MONTH_END" --oneline --no-merges 2>/dev/null | wc -l)
+for repo in $(ls ${IWE_WORKSPACE:-$HOME/IWE}/); do
+  if [ -d ${IWE_WORKSPACE:-$HOME/IWE}/$repo/.git ]; then
+    count=$(git -C ${IWE_WORKSPACE:-$HOME/IWE}/$repo log --since="$MONTH_START" --until="$MONTH_END" --oneline --no-merges 2>/dev/null | wc -l)
     [ "$count" -gt 0 ] && echo "$repo: $count"
   fi
 done
@@ -67,7 +68,7 @@ done
 
 **1d. Drift месячный.** `bash ${IWE_SCRIPTS:-$HOME/IWE/scripts}/iwe-drift.sh` → выявить пары, где lag вырос за месяц.
 
-**1e. Decision log.** `${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/decisions/decision-log-YYYY-MM.md` (WP-109 Ф7, реализация: один файл на месяц) — решения, принятые за месяц.
+**1e. Decision log.** Канонический файл: `${IWE_GOVERNANCE_REPO:-DS-strategy}/decisions/decision-log-YYYY-MM.md` (WP-109 Ф7, один файл на месяц). Перед чтением выполнить совместимую миграцию: если канонического файла нет, но существует `${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/decisions/decision-log-YYYY-MM.md`, создать `decisions/` и переместить старый файл; если существуют оба, не объединять и не перезаписывать молча, сообщить пилоту о расхождении и читать канонический. Если файла нет или в нём нет записей месяца, зафиксировать «решения за месяц не зарегистрированы» и продолжить; отсутствие файла на пустом месяце не является ошибкой Month Close.
 
 **1f. Метрики файлов memory (WP-217 Ф10.2).**
 
@@ -147,7 +148,7 @@ HOT-лимит превышен → понизить horizon в frontmatter ну
 
 > Обзор решений месяца из WP-109 Ф7 decision register.
 
-1. Открыть `${IWE_GOVERNANCE_REPO:-DS-strategy}/exocortex/decisions/decision-log-YYYY-MM.md` (WP-109 Ф7, один файл на месяц).
+1. Открыть канонический файл, уже подготовленный в шаге 1e: `${IWE_GOVERNANCE_REPO:-DS-strategy}/decisions/decision-log-YYYY-MM.md`. Если файл отсутствует или не содержит решений месяца — записать в `MonthClose YYYY-MM.md § Decision log review`: «Решения за месяц не зарегистрированы» и перейти к шагу 9; требование «минимум 1 инсайт» ниже применяется только когда в журнале есть решения.
 2. Для каждого решения месяца ответить:
    - **Оказалось правильным / неправильным / рано судить?**
    - Если неправильное: какой сигнал был пропущен? → кандидат в `memory/feedback_*.md` как урок.
@@ -171,17 +172,18 @@ HOT-лимит превышен → понизить horizon в frontmatter ну
 ### 11. Коммит ${IWE_GOVERNANCE_REPO:-DS-strategy}
 
 ```bash
-cd ~/IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}
+(cd ${IWE_WORKSPACE:-$HOME/IWE}/${IWE_GOVERNANCE_REPO:-DS-strategy}
 # НЕ `git add -A`: в общем клоне (multi-agent) сметает чужое pre-staged → mis-attribution
 # (см. sessions/2026-06/2026-06-20-39-*). Перечисли артефакты month-close ЯВНО:
 MONTH_FILES=(
   "archive/MonthClose YYYY-MM.md"
   "docs/Strategy.md"
-  # + archive/retired-actions.md, exocortex/decisions/decision-log-YYYY-MM.md,
+  # + archive/retired-actions.md, decisions/decision-log-YYYY-MM.md,
   #   memory/t-checklist.md — добавь те, что фактически правил в этом month-close
 )
 git add "${MONTH_FILES[@]}"
 git commit -m "month-close: close YYYY-MM" -- "${MONTH_FILES[@]}"
+)
 ```
 
 Push при явном триггере «заливай».

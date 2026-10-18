@@ -1,20 +1,41 @@
 name: Post-Release Adversarial Audit
 
-# see VR.SC.006 (release-verification-protocol), VR.M.006 (5-layer verification, слой 5)
+# see VR.SC.006 (release-verification-protocol), VR.M.006 (6 уровней верификации, слой 5)
 # see AR.203 (release verification trigger)
 #
 # Триггеры:
 #   1. Manual: workflow_dispatch — автор запускает после релиза.
-#   2. Auto-trigger DISABLED 2026-06-01 (peer-session triage):
-#      Раньше создавал новый issue на каждый push update-manifest.json,
-#      но это создаёт inflated backlog (22 audit issues накопилось).
-#      Теперь audit status трекается в docs/release-audit-log.md (single source).
-#      Для запуска вручную — Actions tab → Run workflow.
+#   2. Auto: push update-manifest.json, НО только когда patch=0 (x.y.0 —
+#      minor/major). Re-enabled 2026-08-10 (WP-7 Ф62) после того, как безусловный
+#      триггер на КАЖДЫЙ push (включая еженедельный авто-бамп patch-версии)
+#      вырубили 2026-06-01: 22 issue накопились нечитанными, потому что частота
+#      сама по себе (1-7 дней) не оставляла шанса разобрать. Запуск по расписанию
+#      бампает patch — этот фильтр не даёт рутинным patch-релизам создавать
+#      issue, но ловит любой minor/major bump (они всегда осознанные, не авто-cron).
+#      Чувствительный patch-релиз получает ту же площадку через workflow_dispatch.
 #
 # Цель: создать reminder с adversarial-промптом → автор прогоняет в Claude session
 # → находит классы регрессий, которые detectors не ловят.
+#
+# Одно напоминание на версию: уже существующее обращение с тем же заголовком (открытое ИЛИ закрытое) шаг
+# не пересоздаёт; ищет по метке `release-audit` и точному заголовку среди всех страниц списка (снятая метка или
+# переименованное обращение допускают повторное создание). Пока ловился только открытый issue, закрытие
+# обращения после аудита приводило к тому, что следующий push update-manifest.json при той же версии x.y.0
+# (она остаётся до очередного бампа) создавал его заново: после закрытия #748 появился #783 для v0.40.0, и он
+# висел открытым.
+#
+# Уведомление автору: только сам issue (GitHub пришлёт письмо и push). Раньше после создания issue шаг слал
+# напоминание в `/api/template-update` бота. Это тот же вход, что и рассылка о выпуске подписчикам: служебное
+# «Нужна независимая проверка (red team)» ушло всем подписчикам обновлений (35 человек при 0.41.0) под заголовком
+# «Обновление шаблона IWE» и с подписью «1 коммит(ов) за последние 24ч» (число зашито в шаге). Адресной отправки
+# только автору у бота нет: пока она не появится, шаг не возвращать. Когда появится, подключить её по образцу
+# release-watchdog.yml (необязательный шаг через vars.PILOT_NOTICE_ENDPOINT, получатель только пилот).
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - update-manifest.json
   workflow_dispatch:
     inputs:
       version:
@@ -29,6 +50,7 @@ permissions:
 jobs:
   create-audit-issue:
     runs-on: ubuntu-latest
+    if: github.repository == 'TserenTserenov/FMT-exocortex-template'
     steps:
       - uses: actions/checkout@v6
       - name: Determine version
@@ -41,7 +63,21 @@ jobs:
               | sed 's/.*"version"[[:space:]]*:[[:space:]]*"//;s/".*//')
             echo "version=$VER" >> $GITHUB_OUTPUT
           fi
+      - name: Skip routine patch bumps on auto-trigger (patch != 0)
+        id: gate
+        if: github.event_name != 'workflow_dispatch'
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          if [ "$PATCH" != "0" ]; then
+            echo "SKIP: $VERSION — patch-релиз (weekly auto-bump), не minor/major. Явный запуск доступен вручную."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Create or update audit reminder issue
+        if: github.event_name == 'workflow_dispatch' || steps.gate.outputs.skip != 'true'
+        id: issue
         uses: actions/github-script@v8
         with:
           script: |
@@ -50,21 +86,34 @@ jobs:
             const promptBody = fs.readFileSync('setup/release-audit-prompt.md', 'utf8');
 
             const title = `Post-release adversarial audit: v${version}`;
-            const body = `> **Manual-triggered reminder.** Релиз v${version} опубликован — нужен adversarial audit субагентом или внешним пилотом.
+            const body = `> **Напоминание об аудите.** Для v${version} нужен adversarial audit субагентом или внешним пилотом.
             >
-            > Цель: найти классы регрессий, которые 8 detectors + smoke 14 НЕ ловят.
+            > Цель: найти воспроизводимые классы регрессий, не охваченные текущими детекторами и проверками установки.
             >
-            > **После audit — обновить \`docs/release-audit-log.md\`** (status + findings + result), затем закрыть этот issue.
+            > **После audit — обновить \`docs/release-audit-log.md\`** (status + findings + result); закрыть это напоминание только после создания отдельных открытых задач для нерешённых существенных находок.
 
-            ## Шаги
+            ## Шаги (минимум ручной работы)
 
-            1. Открыть Claude Code сессию в FMT-exocortex-template
-            2. Скопировать промпт ниже и адаптировать <TARGET-VERSION>
-            3. Прогнать через \`Agent\` или sub-agent
-            4. Найденные классы → +detector в \`integration-contract-validator.sh\`
-            5. Закрыть issue с комментарием: STABLE / X classes found
+            1. Открой НОВЫЙ чат с агентом (не тот, где делались правки релиза) — независимость проверяющего от автора важна.
+            2. Скажи одной фразой: «прогони red team проверку из задачи #<номер этой задачи> в FMT-exocortex-template». Агент сам откроет эту задачу, прочитает промпт ниже и выполнит его — копировать текст руками не нужно.
+            3. Для каждой существенной подтверждённой находки укажи исполняемый detector, fixture или runtime-тест с красным контролем и зелёным кандидатом. Если проверки нет, оговорку должен явно принять владелец продукта или назначенный утверждающий выпуск, не автор находки. Укажи постоянную ссылку на решение в issue, PR или записи решения, область, причину и условие пересмотра. Без решения и ссылки оговорка только предложена, находка открыта. Для каждой нерешённой существенной находки создай отдельный открытый issue и приведи ссылку; это напоминание не является задачей с находкой.
+            4. Оставь вывод слоя 5 комментарием: STABLE / X classes found со ссылками на проверки, оговорки и отдельные открытые задачи. После нужного вердикта слоя 6 и создания задач для всех нерешённых существенных находок закрой напоминание; его закрытие не закрывает находки.
 
-            ## Промпт
+            ## Слой 6 — независимая проверка платформы
+
+            Если выпуск меняет обновлятор, безопасность или поведение агента, другой проверяющий (не автор изменений) проводит \`iwe-platform-redteam\` на одноразовых фикстурах и оставляет комментарий в этом issue:
+
+            \`\`\`
+            Слой 6: GO / CAUTION / BLOCKED
+            Проверяющий: <имя>
+            Артефакт: v${version}, <SHA проверенного коммита>
+            Основание: <краткий результат и ссылка на квитанцию>
+            Оговорки или действие: <если есть>
+            \`\`\`
+
+            Комментарий делает вердикт видимым и не заменяет отдельную подписанную аттестацию. Этот issue сам по себе не устанавливает обязательную проверку подписи или комментария для main. Для чувствительного patch-релиза автор запускает этот workflow вручную с его версией: автоматический issue создаётся только для x.y.0.
+
+            ## Промпт (агент прочитает сам — не для ручного копирования)
 
             <details>
             <summary>Развернуть промпт</summary>
@@ -77,17 +126,25 @@ jobs:
 
             ---
 
-            После добавления detector'а — закрыть issue.`;
+            После разбора находок, нужного вердикта слоя 6 и создания отдельных открытых задач для нерешённых существенных находок — закрыть это напоминание. Закрытие напоминания не закрывает задачи с находками.`;
 
-            const { data: issues } = await github.rest.issues.listForRepo({
+            // One reminder per version: a CLOSED issue with the same title counts too, and every page of the
+            // label's issues is read (newest first; a manual run for an old version can need page 2 and later).
+            // Looking at open issues only re-created it on the next update-manifest.json push after the audit
+            // issue had been closed.
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: 'open',
-              labels: 'release-audit'
+              state: 'all',
+              labels: 'release-audit',
+              per_page: 100
             });
             const existing = issues.find(i => i.title === title);
             if (existing) {
-              console.log(`Issue already exists: #${existing.number}`);
+              console.log(`Issue already exists: #${existing.number} (${existing.state})`);
+              core.setOutput('created', 'false');
+              core.setOutput('number', existing.number);
+              core.setOutput('url', existing.html_url);
             } else {
               const { data } = await github.rest.issues.create({
                 owner: context.repo.owner,
@@ -97,4 +154,7 @@ jobs:
                 labels: ['release-audit']
               });
               console.log(`Created issue #${data.number}: ${data.html_url}`);
+              core.setOutput('created', 'true');
+              core.setOutput('number', data.number);
+              core.setOutput('url', data.html_url);
             }

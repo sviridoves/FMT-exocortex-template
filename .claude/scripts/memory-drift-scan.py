@@ -38,7 +38,10 @@ import re
 import sys
 from pathlib import Path
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    sys.exit("pyyaml не найден. Установите: pip3 install --user pyyaml")
 
 # Строка таблицы РП: `| 1 | Название | Бюджет | Статус | ... |` — берём
 # первую числовую ячейку (номер РП) и ячейку под заголовком «Статус».
@@ -60,14 +63,70 @@ _EMOJI_TO_STATUS = {
     "🔄": "in_progress",
     "⏳": "pending",
     "🏭": "in_progress",
+    "🧪": "in_progress",
+    "🚧": "blocked",
     "⚠️": "blocked",
+    "⏸": "paused",
     "✅": "done",
+    "📦": "done",
+    "↗": "done",
+    "❌": "cancelled",
 }
 
 
+_TEXT_STATUS_PATTERNS = (
+    ("in_progress", re.compile(r"\bin[ _-]?progress\b", re.IGNORECASE)),
+    ("in_progress", re.compile(r"\bactive\b", re.IGNORECASE)),
+    ("in_progress", re.compile(r"\b(?:в[ _-]?работе|активен)\b", re.IGNORECASE)),
+    ("blocked", re.compile(r"\bblocked\b", re.IGNORECASE)),
+    ("blocked", re.compile(r"\b(?:заблокирован|блокер)\b", re.IGNORECASE)),
+    ("paused", re.compile(r"\b(?:paused|приостановлен|на[ _-]?паузе)\b", re.IGNORECASE)),
+    ("done", re.compile(r"\b(?:done|closed|complete(?:d)?)\b", re.IGNORECASE)),
+    ("done", re.compile(r"\b(?:готов|выполнено|заверш(?:ён|ен)|закрыт)\b", re.IGNORECASE)),
+    ("cancelled", re.compile(r"\b(?:cancelled|canceled|отменён|отменен)\b", re.IGNORECASE)),
+    ("pending", re.compile(r"\bpending\b", re.IGNORECASE)),
+    ("pending", re.compile(r"\b(?:ожидает|не[ _-]?начат)\b", re.IGNORECASE)),
+)
+
+# «ждёт» само по себе описывает и активную работу (🔄 ждёт ревью), и блокировку
+# (⏸ ждёт внешнего решения). Используем его только если явный статус и значок
+# отсутствуют; иначе он подменяет более точное свидетельство.
+_FALLBACK_TEXT_STATUS_PATTERNS = (
+    ("pending", re.compile(r"\bждёт\b", re.IGNORECASE)),
+)
+
+
 def normalize_status(raw: str) -> str:
-    """Эмодзи-значение → канонический текстовый статус; текст возвращается как есть."""
-    return _EMOJI_TO_STATUS.get(raw, raw)
+    """Extract the canonical state from a status cell or frontmatter value.
+
+    A table cell may include a visual status plus an explanation (for example,
+    ``🔄 — waiting for review``). The explanation is not a state and must not
+    create a false drift against the card's ``status: in_progress``.
+    """
+    cleaned = re.sub(r"[*~`_]", "", raw).strip()
+    # A status cell may contain a visual category and an explicit text state.
+    # Text wins: some existing MEMORY.md rows use ⏸ for a temporarily paused
+    # plan while explicitly saying "заблокирован" to match `status: blocked`.
+    # Treating the marker as authoritative would invent a drift where the
+    # sources agree. A bare ⏸ remains the distinct `paused` state below.
+    #
+    # issue #471: "text wins" must not reach into the free-form explanation
+    # after the leading marker — a status word appearing there describes a
+    # sub-event ("...инстанс W33 закрыт 11.08"), not the card's own state.
+    # Only the declaring part of the cell, before the first explanation
+    # separator, is searched; the emoji fallback below still covers the
+    # explanation itself if nothing declarative comes before it.
+    lead_segment = re.split(r"[.,:—-]", cleaned, maxsplit=1)[0]
+    for status, pattern in _TEXT_STATUS_PATTERNS:
+        if pattern.search(lead_segment):
+            return status
+    for emoji, status in _EMOJI_TO_STATUS.items():
+        if emoji in cleaned:
+            return status
+    for status, pattern in _FALLBACK_TEXT_STATUS_PATTERNS:
+        if pattern.search(cleaned):
+            return status
+    return cleaned
 
 
 def find_status_column(header_line: str) -> int | None:
@@ -109,13 +168,25 @@ def parse_memory_table(memory_path: Path) -> dict[int, str]:
 
 
 def find_wp_context(governance_repo: Path, wp_num: int) -> Path | None:
-    """Ищет inbox/WP-N/WP-N.md, fallback archive/wp-contexts/WP-N*.md."""
+    """Ищет inbox/WP-N/WP-N.md, fallback archive/wp-contexts/WP-N*.md.
+
+    Номер может быть записан с ведущими нулями (WP-038): issue #1154.
+    """
     active = governance_repo / "inbox" / f"WP-{wp_num}" / f"WP-{wp_num}.md"
     if active.is_file():
         return active
+    padded = re.compile(rf"WP-0*{wp_num}")
+    inbox_dir = governance_repo / "inbox"
+    if inbox_dir.is_dir():
+        for folder in sorted(inbox_dir.iterdir()):
+            if folder.is_dir() and padded.fullmatch(folder.name):
+                card = folder / f"{folder.name}.md"
+                if card.is_file():
+                    return card
     archive_dir = governance_repo / "archive" / "wp-contexts"
     if archive_dir.is_dir():
-        matches = sorted(archive_dir.glob(f"WP-{wp_num}-*.md"))
+        padded_archive = re.compile(rf"WP-0*{wp_num}-.*\.md")
+        matches = sorted(f for f in archive_dir.iterdir() if padded_archive.fullmatch(f.name))
         if matches:
             return matches[0]
     return None
@@ -140,17 +211,28 @@ def read_context_status(context_path: Path) -> str | None:
     return str(status) if status is not None else None
 
 
-def scan(memory_path: Path, governance_repo: Path) -> list[str]:
-    """Возвращает список markdown-строк с найденными дрейфами."""
+def scan(
+    memory_path: Path,
+    governance_repo: Path,
+    unresolved: list[int] | None = None,
+) -> list[str]:
+    """Возвращает список markdown-строк с найденными дрейфами.
+
+    РП, чью карточку не нашли, дописываются в `unresolved` (если список передан):
+    «не удалось проверить» не то же самое, что «расхождений нет» (issue #1154).
+    """
     memory_statuses = parse_memory_table(memory_path)
     drifts: list[str] = []
     for wp_num, memory_status in sorted(memory_statuses.items()):
         context_path = find_wp_context(governance_repo, wp_num)
         if context_path is None:
+            if unresolved is not None:
+                unresolved.append(wp_num)
             continue
         context_status = read_context_status(context_path)
         if context_status is None:
             continue
+        context_status = normalize_status(context_status)
         if context_status != memory_status:
             drifts.append(
                 f"- РП-{wp_num}: MEMORY.md=`{memory_status}` vs "
@@ -160,17 +242,30 @@ def scan(memory_path: Path, governance_repo: Path) -> list[str]:
     return drifts
 
 
+def _default_workspace() -> Path:
+    """Resolve the workspace root the same way the shell tooling does
+    (iwe-env-bootstrap.sh): explicit env var wins, ~/IWE is only a last
+    resort. Without this, an install at a non-default path always fails
+    with "MEMORY.md не найден" (issue #638)."""
+    for var in ("IWE_WORKSPACE", "IWE_ROOT", "WORKSPACE_DIR"):
+        value = os.environ.get(var)
+        if value:
+            return Path(value)
+    return Path.home() / "IWE"
+
+
 def main() -> int:
+    workspace = _default_workspace()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--memory",
         type=Path,
-        default=Path.home() / "IWE" / "memory" / "MEMORY.md",
+        default=workspace / "memory" / "MEMORY.md",
     )
     parser.add_argument(
         "--governance-repo",
         type=Path,
-        default=Path.home() / "IWE" / os.environ.get("IWE_GOVERNANCE_REPO", "DS-strategy"),
+        default=workspace / os.environ.get("IWE_GOVERNANCE_REPO", "DS-strategy"),
     )
     args = parser.parse_args()
 
@@ -178,9 +273,18 @@ def main() -> int:
         print(f"FAIL: MEMORY.md не найден: {args.memory}", file=sys.stderr)
         return 2
 
-    drifts = scan(args.memory, args.governance_repo)
+    unresolved: list[int] = []
+    drifts = scan(args.memory, args.governance_repo, unresolved)
+    if unresolved:
+        total = len(parse_memory_table(args.memory))
+        names = ", ".join(f"РП-{n}" for n in unresolved)
+        print(
+            f"Drift-scan: не удалось проверить {len(unresolved)} из {total} РП "
+            f"(WP-context не найден): {names}"
+        )
     if not drifts:
-        print("Drift-scan (структурный): 0 расхождений")
+        suffix = " среди проверенных" if unresolved else ""
+        print(f"Drift-scan (структурный): 0 расхождений{suffix}")
         return 0
 
     print(f"Drift-scan (структурный): {len(drifts)} расхождений")
