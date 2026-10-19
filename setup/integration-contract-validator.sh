@@ -374,21 +374,35 @@ fi
 log ""
 
 # === Detector 11: prompt bash-script cross-references ===
-# Checks that scripts referenced as `bash "…/scripts/<name>.sh"` in role prompts
-# exist inside FMT/scripts/. Missing scripts = runtime failure for users on fresh install.
+# Checks that scripts referenced as `bash …/scripts/<name>.sh` in role prompts
+# exist inside FMT (either at the full relative path, e.g. .claude/scripts/…,
+# or at scripts/<name> as a fallback). Missing scripts = runtime failure on
+# fresh install. FIX (2026-10-19): the extractor previously stripped the
+# path prefix before scripts/, which turned a valid .claude/scripts/… ref
+# into a false "missing" for scripts/<name> — the file was present all along.
 log "[11/11] prompt_script_refs — bash-вызовы scripts/*.sh в промптах существуют в FMT/scripts/..."
 PROMPT_SCRIPT_VIOLATIONS=0
 if command -v grep >/dev/null 2>&1; then
-    while IFS= read -r script_name; do
-        [ -z "$script_name" ] && continue
-        if [ ! -f "scripts/$script_name" ]; then
-            log "  ⚠ WARN: roles/.../prompts/*.md ссылается на scripts/$script_name — файл отсутствует в FMT/scripts/"
-            PROMPT_SCRIPT_VIOLATIONS=$((PROMPT_SCRIPT_VIOLATIONS + 1))
+    while IFS= read -r script_ref; do
+        [ -z "$script_ref" ] && continue
+        # Strip install-time placeholders so the remainder is repo-relative.
+        clean="${script_ref#\{\{WORKSPACE_DIR\}\}/}"
+        clean="${clean#\{\{HOME_DIR\}\}/}"
+        clean="${clean#\{\{IWE\}\}/}"
+        # Accept either the full relative path (e.g. .claude/scripts/…)
+        # or the bare scripts/<name> form (fallback for stripped refs).
+        if [ -f "$clean" ]; then
+            continue
         fi
+        script_name="${script_ref##*/scripts/}"
+        if [ -f "scripts/$script_name" ]; then
+            continue
+        fi
+        log "  ⚠ WARN: roles/.../prompts/*.md ссылается на $script_ref — файл отсутствует в FMT"
+        PROMPT_SCRIPT_VIOLATIONS=$((PROMPT_SCRIPT_VIOLATIONS + 1))
     done < <(
         grep -rh 'bash[[:space:]]\+.*scripts/[^[:space:]"'\'']*\.sh' roles/*/prompts/*.md 2>/dev/null \
-            | grep -oE 'scripts/[^[:space:]/]+\.sh' \
-            | sed 's|scripts/||' \
+            | grep -oE '([.a-zA-Z0-9_{}/-]+/)?scripts/[^[:space:]"'\'']+\.sh' \
             | sort -u
     )
     if [ "$PROMPT_SCRIPT_VIOLATIONS" -eq 0 ]; then

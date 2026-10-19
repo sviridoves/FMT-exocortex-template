@@ -35,7 +35,9 @@ PYTHON3=$("$ROOT/scripts/lib/find-python3.sh" --stdlib-only) || {
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-mkdir -p "$TMP/DS-strategy/inbox"
+# Governance repo name is an install-time parameter; fall back to the default.
+GOVERNANCE_REPO="${IWE_GOVERNANCE_REPO:-${GOVERNANCE_REPO:-DS-strategy}}"
+mkdir -p "$TMP/$GOVERNANCE_REPO/inbox"
 
 FAILURES=0
 
@@ -66,7 +68,7 @@ run_case "check-manifest-coverage.py full run" 0 \
 run_case "check-manifest-coverage.py no-arg usage (exit 2, not a crash)" 2 \
   "$PYTHON3" scripts/check-manifest-coverage.py
 run_case "wp-list.py --list-cards on empty temp workspace" 0 \
-  "$PYTHON3" scripts/wp-list.py --list-cards --iwe-root "$TMP" --governance-repo DS-strategy
+  "$PYTHON3" scripts/wp-list.py --list-cards --iwe-root "$TMP" --governance-repo "$GOVERNANCE_REPO"
 
 echo ""
 if [ "$FAILURES" -eq 0 ]; then
