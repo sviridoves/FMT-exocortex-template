@@ -9,7 +9,7 @@
 
 | Файл | Создаётся | Закрывается |
 |------|-----------|-------------|
-| WeekPlan | `/strategy-session` (Пн утром) | `/week-close` (Пт-Вс) → переезжает в `archive/` |
+| WeekPlan | `/strategy-session` (Вс) | `/week-close` (Пт-Вс) → переезжает в `archive/` |
 | DayPlan | `/day-open` (утром) | `/day-close` (вечером) → переезжает в `archive/` |
 
 ## Шаблоны

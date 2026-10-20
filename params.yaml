@@ -47,6 +47,9 @@ capture_autonomy: propose
 
 # === Интеграции ===
 
+# GitHub пользователь для FMT-critical-alert
+github_user: sviridoves
+
 # Путь к скрипту синхронизации Linear (day-close.sh шаг 3)
 # Пустой или отсутствует → шаг пропускается
 # Пример: "~/IWE/path/to/linear-sync.sh"
@@ -63,7 +66,7 @@ extensions_dir: extensions
 # Используется week-draft-init.sh + week-draft-append.sh для накопления
 # материала к недельному посту.
 # Пустая строка → скрипты пропускаются (фича не активирована).
-# Пример: knowledge_repo: "DS-Knowledge-Index"
+# Пример: knowledge_repo: "{{KNOWLEDGE_REPO}}"
 knowledge_repo: ""
 
 # === Автор шаблона ===
