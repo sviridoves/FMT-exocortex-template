@@ -511,19 +511,29 @@ CALENDAR_TABLE
 # author-only infrastructure (a shared-checkout publish gateway, a private
 # LLM proxy) not delivered by this template — the caller itself is out of
 # scope here, this flag is the generic, delivered part of the extension point.
-STRATEGY_DAY_NAME=$(read_yaml "day_open.strategy_day" || true)
-case "${STRATEGY_DAY_NAME:-monday}" in
-  monday)    STRATEGY_DOW=1 ;;
-  tuesday)   STRATEGY_DOW=2 ;;
-  wednesday) STRATEGY_DOW=3 ;;
-  thursday)  STRATEGY_DOW=4 ;;
-  friday)    STRATEGY_DOW=5 ;;
-  saturday)  STRATEGY_DOW=6 ;;
-  sunday)    STRATEGY_DOW=7 ;;
-  *)         STRATEGY_DOW=0 ;;
-esac
-if [ "${DOW_NUM:-0}" = "$STRATEGY_DOW" ] && [ "${DAY_OPEN_FORCE_STRATEGY_DAY:-0}" != "1" ]; then
-  exit 2
+# issue #1213: when the config can't be read at all (missing file, no python3),
+# an absent key and a broken config both fell through to the same `:-monday`
+# default — a config outage on an actual Monday looked identical to a deliberate
+# "strategy day is Monday" setting and silently blocked DayPlan generation
+# (exit 2) with no visible cause. YAML_PARSE_OK already distinguishes the two;
+# only trust the configured/default day when the config was actually readable.
+if [ "$YAML_PARSE_OK" = "true" ]; then
+  STRATEGY_DAY_NAME=$(read_yaml "day_open.strategy_day" || true)
+  case "${STRATEGY_DAY_NAME:-monday}" in
+    monday)    STRATEGY_DOW=1 ;;
+    tuesday)   STRATEGY_DOW=2 ;;
+    wednesday) STRATEGY_DOW=3 ;;
+    thursday)  STRATEGY_DOW=4 ;;
+    friday)    STRATEGY_DOW=5 ;;
+    saturday)  STRATEGY_DOW=6 ;;
+    sunday)    STRATEGY_DOW=7 ;;
+    *)         STRATEGY_DOW=0 ;;
+  esac
+  if [ "${DOW_NUM:-0}" = "$STRATEGY_DOW" ] && [ "${DAY_OPEN_FORCE_STRATEGY_DAY:-0}" != "1" ]; then
+    exit 2
+  fi
+else
+  echo "day-open-scaffold: WARN: day-rhythm-config.yaml не распарсился ($YAML_PARSE_ERROR) — strategy_day не проверен, DayPlan генерируется как в обычный день" >&2
 fi
 
 # --- Section: Pomodoro/ритм ---
@@ -1494,7 +1504,7 @@ render_yesterday() {
   # not specified by the day-close protocol, so the grep above is only a secondary signal.
   if [ -z "$dc_committed" ]; then
     local yday_plan="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/archive/day-plans/DayPlan ${YDAY}.md"
-    if [ -f "$yday_plan" ] && grep -qE '<summary><b>Итоги дня</b></summary>|^### Завтра начать с' "$yday_plan"; then
+    if [ -f "$yday_plan" ] && grep -qE '<summary><b>Итоги дня</b></summary>|^#{1,6}[[:space:]]+Итоги дня|Завтра начать с' "$yday_plan"; then
       dc_committed="archived-plan"
     fi
   fi
@@ -1748,6 +1758,7 @@ $SELF_DEV_BLOCK
 ИСКЛЮЧЕНИЕ: РП можно не включать только если его status в inbox/WP-NNN.md явно равен 'done' или 'closed' (или он помечен ✅ в WP-REGISTRY с зачёркиванием). Перед исключением — проверить.
 ЛОВУШКА: «Ф1-Ф3 ✅ закрыто вчера» НЕ означает, что весь РП закрыт. Фаза ≠ РП. Проверить status в inbox/WP-NNN.md.
 ЗАПРЕЩЕНО: включать в план РП, закрытые вчера (есть в «закрыто вчера» + ✅ в REGISTRY). Например, WP-362 закрыт — его нет в плане.
+ЗАПРЕЩЕНО: придумывать номера РП. Колонка '#' = точный WP-ID из JSON-фактов / sweep / priorities; для ad-hoc задач из carry-over без своего WP-ID ставить '—'. Номер WP-N имеет право стоять в строке ТОЛЬКО если этот WP-N открыт (pending/in_progress) и относится к этой же задаче; брать номер «по соседству» или из закрытых строк REGISTRY — галлюцинация.
 
 После priorities.yaml — дополнить из carry-over и SWEEP_WP_LIST теми РП, которых нет в priorities.yaml и которые ещё open.
 Каждый РП из «Обязательные ежедневные РП» ниже (если секция не пуста) ОБЯЗАН быть в таблице — источник уже разрешён детерминированно, не текстом конфига.

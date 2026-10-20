@@ -822,117 +822,19 @@ for _f_rel in current/priorities.yaml docs/WP-REGISTRY.md; do
 done
 
 # ============================================
-# 2. Ensure LLM Proxy available
+# 2. LLM gateway — no local proxy (user runs AI через ai.wormsoft.ru)
 # ============================================
-# issue #434: skipped entirely under --scaffold-only — only step 4 (LLM Fill)
-# below actually needs the proxy; the deterministic scaffold (step 3) does not.
+# Issue: local llm-proxy.py (port 18765) routes to 9router (127.0.0.1:20128),
+# which is not used by this installation. Gateway is the remote ai.wormsoft.ru
+# endpoint instead, so skip the local-proxy healthcheck + auth-probe entirely.
+# The proxy-url used here is passed to day-open-llm-fill.py as-is.
 if [ "$SCAFFOLD_ONLY" != "true" ]; then
-echo "=== 2. LLM Proxy healthcheck ==="
-# issue #877: no gateway address resolved (see the resolution chain near the top).
-# Say so directly instead of probing an empty URL, and do not send the reader
-# hunting for a key rotation - there is no key problem, there is no gateway.
-if [ -z "$LLM_PROXY_URL" ]; then
-  echo "  LLM gateway is not configured: LLM_PROXY_URL and PLATFORM_LLM_PROXY_URL are both empty."
-  # exit 9 = no gateway configured -> caller should retry with --scaffold-only
-  # (issue #893), same contract class as exit 7/8 elsewhere in this file.
-  abort "LLM gateway is not configured - set LLM_PROXY_URL to your gateway (or PLATFORM_LLM_PROXY_URL). This is not an API-key problem. Use --scaffold-only to build the plan without the LLM fill." 9
-fi
-PROXY_HEALTH=$(curl -s "${LLM_PROXY_URL}/v1/health" 2>/dev/null | grep -q "ok" && echo "ok" || echo "fail")
-if [ "$PROXY_HEALTH" != "ok" ]; then
-  if $PROXY_IS_LOCAL; then
-    # lsof (Mac) with ss fallback (NixOS server lacks lsof) — verified live: this
-    # machine has lsof but not ss, so a bare ss-only version (as copied without
-    # testing into month-open-night-run.sh:78) would silently break the Mac side
-    # of the exact dual-machine pair this pipeline is designed to run on. Only
-    # checking port occupancy either way, PID unused below.
-    if lsof -ti :"$PROXY_PORT" >/dev/null 2>&1 || ss -tln 2>/dev/null | grep -q ":$PROXY_PORT "; then
-      # Port already held by another process — likely a live proxy the check above
-      # missed on a transient blip. Spawning here would just crash into "Address
-      # already in use" and spam the error log without helping (found 2026-07-11).
-      echo "  Health check failed but port $PROXY_PORT is already held — not spawning a second proxy, just waiting."
-    else
-      echo "  Proxy not running. Starting via launcher (loads OPENROUTER_API_KEY from secrets)..."
-      bash "$SCRIPT_HOME/llm-proxy-launcher.sh" "$PROXY_PORT" &
-      PROXY_PID=$!
-    fi
-  else
-    echo "  Remote proxy ($LLM_PROXY_URL) failed health check — nothing local to spawn, just waiting/retrying."
-  fi
-  # Retry up to 10 times (20s total) — launcher needs extra time to source secrets + import
-  for _i in 1 2 3 4 5 6 7 8 9 10; do
-    sleep 2
-    PROXY_HEALTH=$(curl -s "${LLM_PROXY_URL}/v1/health" 2>/dev/null | grep -q "ok" && echo "ok" || echo "fail")
-    [ "$PROXY_HEALTH" = "ok" ] && break
-    echo "  Waiting for proxy (attempt $_i/10)..."
-  done
-  if [ "$PROXY_HEALTH" != "ok" ]; then
-    abort "LLM Proxy unavailable (tried to start, failed)"
-  fi
-fi
-echo "  Proxy OK"
-
-# Alive != authorized: /v1/health never touches upstream credentials, so a proxy
-# orphan that outlived a key rotation keeps answering "ok" while 401-ing every
-# real call (2026-07-30 04:30 — 7/7 fill chunks failed with HTTP 401, day not
-# opened). Same request contract as day-open-llm-fill.py: no "model" field, the
-# proxy routes by verification_class.
-# WP-484 Ф50b (04.08): LLM_PROXY_SECRET was never actually provisioned anywhere
-# this pipeline runs -- confirmed live from the remote server. What IS already provisioned
-# and already authenticates against this same gateway: PROXY_SHARED_SECRET
-# (root-only /etc/iwe/env, used by iwe-llm-health/iwe-overnight-auditor) and
-# ANTHROPIC_API_KEY (~/.iwe/.proxy-env, readable by the pilot's own account -- the one this pipeline's
-# actual execution context can see). Falls back through what's really there
-# instead of requiring a secret nobody would ever provision under this exact name.
+echo "=== 2. LLM gateway — no local proxy (ai.wormsoft.ru) ==="
+echo "  Proxy disabled: llm-proxy.py skipped (upstream 9router not in use)"
 LLM_PROXY_SECRET="${LLM_PROXY_SECRET:-${PROXY_SHARED_SECRET:-${ANTHROPIC_API_KEY:-}}}"
-AUTH_PROBE_ARGS=(-H 'content-type: application/json')
-[ -n "${LLM_PROXY_SECRET:-}" ] && AUTH_PROBE_ARGS+=(-H "X-IWE-Internal-Secret: ${LLM_PROXY_SECRET}")
-AUTH_PROBE_BODY='{"messages":[{"role":"user","content":"ping"}],"max_tokens":1,"verification_class":"trivial"}'
-AUTH_CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 30 -X POST "${LLM_PROXY_URL}/v1/messages" \
-  "${AUTH_PROBE_ARGS[@]}" -d "$AUTH_PROBE_BODY" 2>/dev/null) || AUTH_CODE="000"
-if [ "$AUTH_CODE" != "200" ]; then
-  if $PROXY_IS_LOCAL; then
-    # Self-heal (WP-484, found 2026-08-04): this probe first caught this failure mode
-    # on 2026-07-30 and has correctly fired on every recurrence since (2026-08-02 x3,
-    # 2026-08-04) -- but detection never had matching remediation, so the same
-    # process (confirmed 2026-08-04: same pid, 9 days uptime across all of the above)
-    # kept serving the stale credential until a human happened to restart it by hand.
-    # Kill the process holding the port and let launchd's KeepAlive respawn it fresh
-    # (re-sources the secrets file) -- same fix two independent peer-session
-    # diagnoses (2026-07-03, 2026-08-02) already landed on; retry the probe once
-    # before falling back to abort.
-    echo "  Authorized probe failed (HTTP $AUTH_CODE) — restarting local proxy and retrying once"
-    STALE_PIDS=$(lsof -ti :"$PROXY_PORT" 2>/dev/null || true)
-    for _pid in $STALE_PIDS; do kill "$_pid" 2>/dev/null || true; done
-    for _i in 1 2 3 4 5 6 7 8 9 10; do
-      sleep 2
-      curl -s "${LLM_PROXY_URL}/v1/health" 2>/dev/null | grep -q "ok" && break
-      echo "  Waiting for proxy respawn (attempt $_i/10)..."
-    done
-  else
-    # Remote gateway (WP-484 Ф48b, 04.08): no local process to kill -- Railway
-    # supervises its own restarts (railway.toml restartPolicyType=ON_FAILURE).
-    # A 401 here almost always means LLM_PROXY_SECRET is unset/wrong on this
-    # host (confirmed missing on the remote server at cutover time), not a crashed
-    # process -- one short wait only covers a mid-deploy blip on Railway's side.
-    echo "  Authorized probe failed (HTTP $AUTH_CODE) on remote gateway — short wait and retry once"
-    sleep 5
-  fi
-  AUTH_CODE=$(curl -s -o /dev/null -w '%{http_code}' -m 30 -X POST "${LLM_PROXY_URL}/v1/messages" \
-    "${AUTH_PROBE_ARGS[@]}" -d "$AUTH_PROBE_BODY" 2>/dev/null) || AUTH_CODE="000"
-  if [ "$AUTH_CODE" != "200" ]; then
-    if $PROXY_IS_LOCAL; then
-      tg_notify "🚨 Day Open aborted: LLM proxy on port $PROXY_PORT still fails after restart (HTTP $AUTH_CODE) — credential itself is likely dead at the provider, needs manual rotation (WP-399), not just a process restart."
-    else
-      tg_notify "🚨 Day Open aborted: remote LLM proxy ($LLM_PROXY_URL) still fails (HTTP $AUTH_CODE) — check LLM_PROXY_SECRET on this host matches Railway's PROXY_SHARED_SECRET, or WP-399 key rotation."
-    fi
-    abort "LLM Proxy authorized probe failed after restart (HTTP $AUTH_CODE)"
-  fi
-  echo "  Proxy authorized probe OK after restart"
+echo "  Proxy URL: ${LLM_PROXY_URL:-not set}"
 else
-  echo "  Proxy authorized probe OK"
-fi
-else
-  echo "=== 2. LLM Proxy healthcheck — SKIPPED (--scaffold-only) ==="
+echo "=== 2. LLM gateway — SKIPPED (--scaffold-only) ==="
 fi
 
 # ============================================
@@ -1083,10 +985,11 @@ else
     --cp-profile "$CP_PROFILE" \
     --calendar "$CALENDAR_OUT" \
     --fleeting-notes "$DS_STRATEGY/inbox/fleeting-notes.md" \
-    --priorities "$DS_STRATEGY/current/priorities.yaml" \
     --out "$DAYPLAN_PATH" \
-    --proxy-url "$LLM_PROXY_URL" \
-    --proxy-secret "$LLM_PROXY_SECRET" 2> "$FILL_ERR_TMP" || FILL_EXIT=$?
+    --proxy-url "${LLM_PROXY_URL:-https://ai.wormsoft.ru/api/gpt}" \
+    --proxy-secret "$LLM_PROXY_SECRET" \
+    --model "${LLM_MODEL:-wormsoft/mine/myMedium}" \
+    --api-key "${LLM_API_KEY:-${ANTHROPIC_AUTH_TOKEN:-}}" 2> "$FILL_ERR_TMP" || FILL_EXIT=$?
 fi
 cat "$FILL_ERR_TMP" >&2
 { echo "=== LLM Fill $(date '+%H:%M:%S') exit=$FILL_EXIT ==="; cat "$FILL_ERR_TMP"; } >> "$DAY_OPEN_LOG"
