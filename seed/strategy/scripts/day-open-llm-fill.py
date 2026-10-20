@@ -37,7 +37,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 from wp_inbox import wp_card_paths  # noqa: E402 — lib path set above
 
-DEFAULT_PROXY_URL = "http://localhost:18765"
+DEFAULT_PROXY_URL = "https://ai.wormsoft.ru/api/gpt"
+DEFAULT_MODEL = "wormsoft/mine/myMedium"
 SECTION_TIMEOUT_S = 60
 TOTAL_TIMEOUT_S = 300
 
@@ -673,6 +674,7 @@ def build_today_plan_prompt(header: str, section_content: str, weekplan: str,
         "7. Верни ТОЛЬКО содержимое секции — БЕЗ заголовка секции.",
         "8. Audit-trail для carry-over: после строки '**Carry-over из Day Close вчера:**' воспроизведи ВЕСЬ список из WeekReport ('Не выполнено (carry-over ...)') или вчерашнего DayPlan ('Завтра начать с'). Если какой-то пункт carry-over НЕ попал в таблицу плана — оставь его в самой строке carry-over с пометкой `(отложено: <причина>)` в круглых скобках сразу после пункта. Возможные причины: 'нет WP-ID — ad-hoc задача, не проходит JSON-fact pipeline' / 'условный carry-over \"если бюджет\", дневной бюджет заполнен другими РП' / 'WP в JSON, но статус — done/blocked'. НЕ выкидывай пункт молча — у пилота должен оставаться след. ВАЖНО: пункты с пометкой '(отложено: ...)' живут ТОЛЬКО в строке carry-over (текстовом следе), их часы НЕ входят в Бюджет дня (инвариант 5 остаётся в силе: бюджет = сумма часов JSON-фактов + mandatory_daily_wps).",
         "9. В переданной секции таблица содержит одну строку-ОБРАЗЕЦ формата: '| 🔴 | С | NNN | **<!-- PENDING -->** | X | pending |'. Это НЕ данные и не РП из JSON — это только показ формата колонок. Эта строка целиком (включая литералы NNN, X, pending) НЕ должна попасть в твой ответ ни в каком виде. Замени её (и добавь остальные) РОВНО N строками, где N = число РП в JSON-фактах (инвариант 2) — по одной строке на каждый РП, реальные номер/название/часы/статус из JSON, без единого NNN/X/<!-- PENDING --> в финальной таблице.",
+        "10. Колонка '#' ДОЛЖНА содержать либо точный WP-ID из JSON-фактов этого РП, либо '—' для ad-hoc задач из carry-over без WP-ID. КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО придумывать или подставлять номера WP из WeekPlan, carry-over, REGISTRY или любых других источников — если у задачи нет своего WP-ID в JSON-фактах, ставь '—'. Проверка: каждый номер WP-N в колонке '#' обязан присутствовать в JSON-фактах с тем же названием; нарушение = отбраковка всего ответа.",
         "",
         "=== JSON-ФАКТЫ: Активные РП (источник — frontmatter WP-*.md) ===",
         facts_json,
@@ -696,16 +698,19 @@ def build_today_plan_prompt(header: str, section_content: str, weekplan: str,
 
 
 def call_proxy(prompt: str, proxy_url: str, proxy_secret: str | None,
-               temperature: float | None = None) -> str:
+               model: str, api_key: str | None, temperature: float | None = None) -> str:
     payload = {
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2048,
+        "max_tokens": 8192,
         "verification_class": "closed-loop",
+        "model": model,
     }
     if temperature is not None:
         payload["temperature"] = temperature
     headers = {"Content-Type": "application/json"}
-    if proxy_secret:
+    if api_key:
+        headers["x-api-key"] = api_key
+    elif proxy_secret:
         headers["X-IWE-Internal-Secret"] = proxy_secret
 
     req = urllib.request.Request(
@@ -727,7 +732,8 @@ def is_world_chunk(chunk: dict) -> bool:
 
 
 def fill_world_lens_inplace(chunk: dict, weekplan: str, active_wps: str,
-                            proxy_url: str, proxy_secret: str | None) -> bool:
+                            proxy_url: str, proxy_secret: str | None,
+                            model: str = DEFAULT_MODEL, api_key: str | None = None) -> bool:
     """Ф32 п.1 (WP-484, 31.07): the world section's news list is scaffold-rendered
     fact, not LLM material — sending the whole section for rewriting reliably lost
     the list (the model returned only its «Вывод», with hallucinated WP numbers).
@@ -758,7 +764,7 @@ def fill_world_lens_inplace(chunk: dict, weekplan: str, active_wps: str,
         "=== КОНТЕКСТ: Активные WP ===",
         active_wps or "Нет активных WP.",
     ])
-    response = call_proxy(prompt, proxy_url, proxy_secret).strip()
+    response = call_proxy(prompt, proxy_url, proxy_secret, model=model, api_key=api_key).strip()
     if not response:
         raise RuntimeError("Empty response for world lens (Вывод)")
     response = re.sub(r"^\**Вывод:\**\s*", "", response)
@@ -796,7 +802,9 @@ def fill_chunk(chunk: dict, weekplan: str, active_wps: str, calendar: str,
                cp_profile: str, proxy_url: str, proxy_secret: str | None,
                wp_facts: list[dict] | None = None,
                fault_profile: str = "",
-               fleeting_notes: str = "") -> str:
+               fleeting_notes: str = "",
+               model: str = DEFAULT_MODEL,
+               api_key: str | None = None) -> str:
     header = chunk["header"]
     content = "".join(chunk["lines"][1:])  # без заголовка
 
@@ -820,12 +828,13 @@ def fill_chunk(chunk: dict, weekplan: str, active_wps: str, calendar: str,
     if is_today_plan and wp_facts:
         prompt = build_today_plan_prompt(header, content, weekplan, wp_facts,
                                          calendar, cp_profile, fault_profile)
-        response = call_proxy(prompt, proxy_url, proxy_secret, temperature=0.0)
+        # temperature=0.0 returns empty content on this gateway; use 0.1 instead.
+        response = call_proxy(prompt, proxy_url, proxy_secret, model=model, api_key=api_key, temperature=0.1)
     else:
         prompt = build_section_prompt(header, content, weekplan, active_wps,
                                       calendar, cp_profile, fault_profile,
                                       fleeting_notes=fleeting_notes)
-        response = call_proxy(prompt, proxy_url, proxy_secret)
+        response = call_proxy(prompt, proxy_url, proxy_secret, model=model, api_key=api_key)
 
     if not response.strip():
         raise RuntimeError(f"Empty response for section {header}")
@@ -844,6 +853,8 @@ def main() -> None:
     parser.add_argument("--out", required=True)
     parser.add_argument("--proxy-url", default=os.getenv("LLM_PROXY_URL", DEFAULT_PROXY_URL))
     parser.add_argument("--proxy-secret", default=os.getenv("LLM_PROXY_SECRET", None))
+    parser.add_argument("--model", default=os.getenv("LLM_MODEL", DEFAULT_MODEL))
+    parser.add_argument("--api-key", default=os.getenv("LLM_API_KEY", None))
     args = parser.parse_args()
 
     scaffold = read_file(args.scaffold)
@@ -887,7 +898,8 @@ def main() -> None:
         if is_world_chunk(chunk):
             try:
                 if fill_world_lens_inplace(chunk, weekplan, active_wps,
-                                           args.proxy_url, args.proxy_secret):
+                                           args.proxy_url, args.proxy_secret,
+                                           args.model, args.api_key):
                     print("[OK] Filled: Мир (только строка Вывод, список сохранён)", file=sys.stderr)
                 else:
                     print("[INFO] Мир: PENDING вне строки Вывод (нет данных источника) — секция оставлена как есть", file=sys.stderr)
@@ -899,7 +911,8 @@ def main() -> None:
         try:
             new_content = fill_chunk(chunk, weekplan, active_wps, calendar, cp_profile,
                                      args.proxy_url, args.proxy_secret, wp_facts,
-                                     fault_profile, fleeting_notes=fleeting_notes)
+                                     fault_profile, fleeting_notes=fleeting_notes,
+                                     model=args.model, api_key=args.api_key)
             # Structural tag protection: restore canonical <summary>, drop LLM-wrapped
             # <details>, and balance </details> so nesting stays valid.
             original_text = "".join(chunk["lines"])
