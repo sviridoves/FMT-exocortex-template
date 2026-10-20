@@ -81,7 +81,9 @@ fi
 # run_inbox_check_isolated().
 assert_ai_cli_root_compat() {  # <flags>
     local flags="${1:-}"
-    local uid="${EUID:-$(id -u)}"
+    # IWE_EXTRACTOR_TEST_EUID: test-only override (EUID is bash-readonly, so a
+    # test harness cannot simulate root without it); unset in every real run.
+    local uid="${IWE_EXTRACTOR_TEST_EUID:-${EUID:-$(id -u)}}"
     [ "$uid" -eq 0 ] || return 0
     if printf '%s\n' "$flags" | grep -Eq '(^|[[:space:]])--dangerously-skip-permissions([[:space:]]|$)'; then
         echo "[$(date '+%H:%M:%S')] ERROR: запуск от root несовместим с --dangerously-skip-permissions (AI CLI откажет на каждом вызове). Снимите флаг (AI_CLI_EXTRA_FLAGS/IWE_EXTRACTOR_INBOX_AI_FLAGS) или запускайте не от root." >&2
@@ -352,6 +354,9 @@ $extra_args"
 
     if git -C "$strategy_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         if [ "$commit_mode" = "isolated-inbox" ]; then
+            # issue #2026-10-20: re-apply missing [analyzed] marks before the
+            # diff-based check would block publication of a real report.
+            ensure_analyzed_marks "$strategy_dir"
             verify_inbox_outputs "$strategy_dir" || return 1
         elif [ "$commit_mode" = "isolated-feed" ]; then
             verify_feed_outputs "$strategy_dir" || return 1
@@ -372,6 +377,69 @@ $extra_args"
 
     # macOS notification
     notify "KE: $command_file" "Процесс завершён"
+}
+
+
+# Deterministic rescue for missing input marks (issue found 2026-10-20):
+# the model sometimes writes the extraction report but forgets the
+# "[analyzed YYYY-MM-DD]" mark on the source heading in captures.md /
+# fleeting-notes.md. verify_inbox_outputs() then sees a clean git diff on
+# capture paths and blocks publication ("without updated input marks"),
+# which loses a whole night's run. Instead of failing, re-apply the marks
+# from the report's own source_file/source_heading pairs -- a fixed rule,
+# not an LLM opinion: any heading listed in the report is by definition
+# processed this run.
+#
+# Prints one line per applied mark. Tolerates: multiple new reports, marks
+# already present (skip), headings not found (leave alone, reported), and
+# standalone captures/*.md files (status: pending-review -> analyzed).
+ensure_analyzed_marks() {
+    local strategy_dir="$1" report head_path src_file src_heading mark_date today
+    local f rel target_mark
+    today=$(date +%Y-%m-%d)
+    while IFS= read -r -d '' report; do
+        [ -s "$strategy_dir/$report" ] || continue
+        mark_date=$(awk '
+            FNR==1 && $0=="---" {infm=1; next}
+            infm && $0=="---" {infm=0}
+            infm && /^date:[[:space:]]*/ {sub(/^date:[[:space:]]*/,""); gsub(/["[:space:]]/,""); print; exit}
+        ' "$strategy_dir/$report")
+        [ -n "$mark_date" ] || mark_date="$today"
+        while IFS=$'\t' read -r src_file src_heading; do
+            [ -n "$src_file" ] || continue
+            rel="inbox/$src_file"
+            if [[ "$src_file" == captures/* ]]; then
+                # standalone capture file: bump frontmatter status, not a heading
+                local sf="$strategy_dir/inbox/$src_file"
+                if [ -f "$sf" ] && grep -q '^status:[[:space:]]*pending-review' "$sf" 2>/dev/null; then
+                    sed -i "0,/^status:[[:space:]]*pending-review/s//status: analyzed/" "$sf"
+                    log "Auto-marked standalone capture $src_file -> status: analyzed (missing input mark rescue)"
+                fi
+                continue
+            fi
+            if [ ! -f "$strategy_dir/$rel" ]; then
+                log "WARN: ensure_analyzed_marks: source file not found: $rel (report $report)"
+                continue
+            fi
+            if [ -z "$src_heading" ]; then continue; fi
+            # heading may already carry any status mark -> skip
+            if grep -qE "^#{1,6} ${src_heading//./\.}[[:space:]]+\[(analyzed|processed|duplicate|defer)([^[:alnum:]_]|$)" "$strategy_dir/$rel" 2>/dev/null; then
+                continue
+            fi
+            # escape for sed
+            local esc_h="${src_heading//./\.}"
+            esc_h="${esc_h//&/\\&}"
+            if ! grep -qE "^#{1,6} ${esc_h}([[:space:]]|$)" "$strategy_dir/$rel"; then
+                log "WARN: ensure_analyzed_marks: heading not found in $rel: $src_heading (report $report)"
+                continue
+            fi
+            sed -i -E "s/^(#{1,6}) (${esc_h})([[:space:]]*)$/\1 \2 [analyzed ${mark_date}]/" "$strategy_dir/$rel"
+            log "Auto-marked [analyzed $mark_date] in $rel: $src_heading (missing input mark rescue)"
+        done < <(awk -F': ' '
+            /^source_file: / {sf=substr($0,14); gsub(/[[:space:]]+$/,"",sf)}
+            /^source_heading: / {sh=substr($0,17); gsub(/[[:space:]]+$/,"",sh); if(sf!=""){print sf "\t" sh; sf=""; sh=""}}
+        ' "$strategy_dir/$report")
+    done < <(git -C "$strategy_dir" ls-files --others --exclude-standard -z -- inbox/extraction-reports/)
 }
 
 verify_inbox_outputs() {
