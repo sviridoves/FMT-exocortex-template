@@ -38,20 +38,47 @@ BUDGET_RE = re.compile(
 # ни разу не заметно ни в логах, ни в самом DayPlan). Живой пример: DayPlan
 # 2026-09-01 осталась с голым "103h" от LLM-заполнителя вместо декорированной
 # детерминированной строки.
-#
-# BUGFIX (2026-10-19): ячейки пишутся и диапазонами ("1-2", "2-3", "2-3h") —
-# прежний regex не совпадал ни с одной, сумма не считалась, строка LLM оставалась
-# как есть и pre-commit блокировал DayPlan ("бюджет не в формате"). Для диапазона
-# берём ВЕРХНЮЮ границу — консервативная планировочная цифра.
-H_CELL_RE = re.compile(r"^(\d+(?:\.\d+)?)(?:-(\d+(?:\.\d+)?))?h?$")
+H_CELL_RE = re.compile(r"^(\d+(?:\.\d+)?)h?$")
+
+# RANGES (2026-10-20): LLM-fill и пилот пишут диапазоны («2-3», «2–3h»,
+# «2.5-3 h») и суммы блоков («1+2.5») — прежний regex их не матчил, патч
+# считал это format drift и молча пропускал пересчёт всего бюджета. Для
+# диапазона в сумму берётся верхняя граница (консервативная оценка загрузки
+# портфеля), для суммы — арифметика слагаемых.
+H_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)[–—-](\d+(?:\.\d+)?)\s*h?$")
+H_SUM_RE = re.compile(r"^\d+(?:\.\d+)?(?:\s*\+\s*\d+(?:\.\d+)?)+\s*h?$")
+
+
+def _range_or_num(token):
+    """One term of a sum cell: plain number or range (upper bound)."""
+    token = token.strip().rstrip("h").strip()
+    m = H_RANGE_RE.match(token)
+    if m:
+        return float(m.group(2))
+    try:
+        return float(token)
+    except ValueError:
+        return None
 
 
 def parse_h_cell(cell):
-    """Hours from an h-column cell, or None if unrecognized. Range → upper bound."""
-    m = H_CELL_RE.match(cell.strip())
-    if not m:
-        return None
-    return float(m.group(2) if m.group(2) is not None else m.group(1))
+    """Return hours from one 'h'-column cell, or None if not an hour value.
+
+    Plain number ("6", "6h", "0.5h") → its value; range ("2-3", "2–3h") → the
+    upper bound; sum of blocks ("1+2.5") → arithmetic total. Kept separate so
+    sum_plan_hours() and today_scoped_hours() share one parser instead of two
+    drifting regex copies."""
+    m = H_CELL_RE.match(cell)
+    if m:
+        return float(m.group(1))
+    m = H_RANGE_RE.match(cell)
+    if m:
+        return float(m.group(2))
+    if H_SUM_RE.match(cell):
+        parts = [_range_or_num(p) for p in re.split(r"\+", cell.replace("h", ""))]
+        if all(p is not None for p in parts):
+            return sum(parts)
+    return None
 
 ATTENTION_HEADER_RE = re.compile(r"(<summary><b>Требует внимания</b></summary>\s*\n)")
 
@@ -103,11 +130,23 @@ def sum_plan_hours(text):
         # Data row
         if h_col is not None and len(cells) > h_col:
             rows_seen += 1
-            v = parse_h_cell(cells[h_col])
-            if v is not None:
+            hours = parse_h_cell(cells[h_col].strip())
+            if hours is not None:
                 rows_matched += 1
-                total += v
+                total += hours
     return total, in_table, rows_seen, rows_matched
+
+
+def _hours_from_item(item):
+    """Fallback for free-text `today` items without a WP-id: read the trailing
+    hours token ("— 2-3h", "— 1+2.5h"). Ranges use the upper bound, sums are
+    added — same policy as parse_h_cell."""
+    tokens = str(item).replace(",", ".").split()
+    for token in reversed(tokens[-3:]):
+        hours = parse_h_cell(token)
+        if hours is not None:
+            return hours
+    return None
 
 
 def today_scoped_hours(text, today_wps):
@@ -120,13 +159,28 @@ def today_scoped_hours(text, today_wps):
     different question than "how many hours am I actually planning today"
     (14h for the 2 WPs he'd actually marked `today`) — showing only the
     portfolio-wide number left that question unanswered in the file itself.
+    Free-text items without a WP-id (2026-10-20: pilot's `today` is prose,
+    not ids) contribute their own trailing hours instead of silently 0.
     Returns None if today_wps is empty (nothing to scope to)."""
     if not today_wps:
         return None
-    wp_res = [re.compile(rf"WP-{re.escape(str(wp).replace('WP-', '').strip())}(?!\d)") for wp in today_wps]
+    total = 0.0
+    scoped = []  # only items with a WP-id — those are table-scoped below
+    for item in today_wps:
+        if re.search(r"WP-\d+", str(item)):
+            scoped.append(item)
+        else:
+            hours = _hours_from_item(item)
+            if hours is not None:
+                total += hours
+    if not scoped:
+        return total
+    wp_res = []
+    for item in scoped:
+        for wp in re.findall(r"WP-\d+", str(item)):
+            wp_res.append(re.compile(rf"{re.escape(wp)}(?!\d)"))
     in_table = False
     h_col = None
-    total = 0.0
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("|"):
@@ -142,9 +196,9 @@ def today_scoped_hours(text, today_wps):
                 in_table = True
             continue
         if h_col is not None and len(cells) > h_col and any(r.search(stripped) for r in wp_res):
-            v = parse_h_cell(cells[h_col])
-            if v is not None:
-                total += v
+            hours = parse_h_cell(cells[h_col].strip())
+            if hours is not None:
+                total += hours
     return total
 
 
@@ -190,7 +244,7 @@ def append_attention_finding(text, finding):
     return (patched, True) if n else (text, False)
 
 
-def patch_budget(text, h_rp, h_phys, today_h=None, partial=False):
+def patch_budget(text, h_rp, h_phys, today_h=None):
     # RELABEL (2026-09-01, Ф148/WP-484, peer-session consensus with Codex):
     # h_rp is the sum of remaining-effort estimates across every in-flight WP
     # in the plan table — a portfolio-load figure, not a day's capacity (a
@@ -210,17 +264,7 @@ def patch_budget(text, h_rp, h_phys, today_h=None, partial=False):
         # portfolio-wide number wasn't a day claim) — sourced from
         # priorities.yaml's `today` list, not this table's full row set.
         replacement += f" / РП на сегодня: ~{today_h:.0f}h"
-    if partial:
-        replacement += " / частичный расчёт"
-    patched = BUDGET_RE.sub(replacement, text)
-    if patched == text:
-        # LLM мог переписать строку без метки **Бюджет дня:** / **Портфель в
-        # работе:** (или без них совсем) — тогда BUDGET_RE не матчится.
-        # Валидатор всё равно требует '~Xh РП' и '~N.Nx'; заменяем первую строку
-        # с «мультипликатор» или с «всего», чтобы формат прошёл.
-        fallback_re = re.compile(r"^.*(?:мультипликатор|всего|Бюджет|бюджет).*$", re.M)
-        patched = fallback_re.sub(replacement, text, count=1)
-    return patched
+    return BUDGET_RE.sub(replacement, text)
 
 
 def main():
@@ -234,8 +278,6 @@ def main():
         print("budget-patch: no plan table today — skipping", file=sys.stderr)
         return
 
-    partial = False
-    unmatched = 0
     if rows_matched < rows_seen:
         # The table exists and has rows, but at least one didn't parse as an
         # hour value — the format-drift class of bug (H_CELL_RE comment
@@ -243,53 +285,37 @@ def main():
         # check only covering rows_matched == 0: a table where 2 of 3 rows
         # matched still silently computed an understated total from the
         # matched rows alone, with zero indication that one row was dropped.
-        # 2026-10-19 (day-open rc=1 19.10): skipping the patch on partial
-        # parse left the LLM's free-text budget line in place, which the
-        # pre-commit validator then refused (format "не найден") — the pipeline
-        # died after a green LLM fill. Now: write a format-valid line from the
-        # matched rows anyway, mark it partial in the line itself and in
-        # «Требует внимания». Never leave the free-text line for the
-        # validator to choke on.
-        partial = True
+        # Any drop, partial or total, means the sum can't be trusted — don't
+        # patch on a partial count either.
         unmatched = rows_seen - rows_matched
-
-    if rows_matched == 0:
-        # Nothing parsed: still replace the free-text line with a valid-format
-        # honest zero, not "leave as LLM wrote". Format is required by
-        # validate-staged-artifacts.sh; a 0 with the caveat is truthful.
-        h_rp = 0.0
-        h_phys = 0.0
-        today_h = None
-        partial = True
-        unmatched = rows_seen
-    else:
-        h_phys = read_phys_hours(args.priorities) or h_rp
-        today_wps = read_today_wps(args.priorities)
-        today_h = today_scoped_hours(text, today_wps)
-
-    patched = patch_budget(text, h_rp, h_phys, today_h, partial=partial)
-
-    findings = []
-    if partial:
-        findings.append(
-            f"«Портфель в работе»: {unmatched} из {rows_seen} строк(и) плана с "
-            f"колонкой «h» не распознаны как число часов — сумма неполная"
+        finding = (
+            f"«Портфель в работе» не пересчитан: {unmatched} из {rows_seen} строк(и) плана с "
+            f"колонкой «h» не распознаны как число часов — детерминированный "
+            f"патч пропущен, строка осталась как её написал LLM"
         )
-
-    for finding in findings:
-        patched, written = append_attention_finding(patched, finding)
+        patched, written = append_attention_finding(text, finding)
         if written:
-            print(f"budget-patch: {finding}", file=sys.stderr)
+            dayplan.write_text(patched, encoding="utf-8")
+        print(f"budget-patch: {finding}", file=sys.stderr)
+        return
+
+    if h_rp == 0.0:
+        print("budget-patch: plan table has no rows — skipping", file=sys.stderr)
+        return
+
+    h_phys = read_phys_hours(args.priorities) or h_rp
+    today_wps = read_today_wps(args.priorities)
+    today_h = today_scoped_hours(text, today_wps)
+    patched = patch_budget(text, h_rp, h_phys, today_h)
 
     if patched == text:
         print(f"budget-patch: budget line not found or already correct (h_rp={h_rp})", file=sys.stderr)
         return
 
     dayplan.write_text(patched, encoding="utf-8")
-    mult = (h_rp / h_phys) if h_phys else 1.0
+    mult = h_rp / h_phys if h_phys else 1.0
     today_suffix = f" / сегодня ~{today_h:.0f}h" if today_h is not None else ""
-    partial_suffix = " / частичный расчёт" if partial else ""
-    print(f"budget-patch: ~{h_rp:.0f}h РП / ~{h_phys:.0f}h физ / ~{mult:.1f}x{today_suffix}{partial_suffix}", file=sys.stderr)
+    print(f"budget-patch: ~{h_rp:.0f}h РП / ~{h_phys:.0f}h физ / ~{mult:.1f}x{today_suffix}", file=sys.stderr)
 
 
 if __name__ == "__main__":
