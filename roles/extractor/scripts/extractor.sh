@@ -441,7 +441,6 @@ ensure_analyzed_marks() {
         ' "$strategy_dir/$report")
     done < <(git -C "$strategy_dir" ls-files --others --exclude-standard -z -- inbox/extraction-reports/)
 }
-
 verify_inbox_outputs() {
     local strategy_dir="$1" report new_reports=0
     while IFS= read -r -d '' report; do
