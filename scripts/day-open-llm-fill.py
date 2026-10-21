@@ -14,7 +14,7 @@ day-open-llm-fill.py — WP-356: per-section LLM-заполнение PENDING-м
 - Секция 'План на сегодня' использует consolidated prompt с JSON-фактами из WP frontmatter.
 - Секция без PENDING = неизменна (идемпотентность).
 - Atomic write: tmp→rename если out == scaffold.
-- Timeout: 60s на секцию, 300s общий.
+- Timeout: 120s на секцию, 300s общий.
 - Proxy fail = hard fail (exit 1), fallback отключён.
 - temperature=0 для today_plan (детерминированный рендерер).
 """
@@ -38,7 +38,7 @@ from wp_inbox import wp_card_paths  # noqa: E402 — lib path set above
 
 DEFAULT_PROXY_URL = "https://ai.wormsoft.ru/api/gpt"
 DEFAULT_MODEL = "wormsoft/mine/myMedium"
-SECTION_TIMEOUT_S = 60
+SECTION_TIMEOUT_S = 120
 TOTAL_TIMEOUT_S = 300
 
 
