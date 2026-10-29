@@ -354,9 +354,6 @@ $extra_args"
 
     if git -C "$strategy_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         if [ "$commit_mode" = "isolated-inbox" ]; then
-            # issue #2026-10-20: re-apply missing [analyzed] marks before the
-            # diff-based check would block publication of a real report.
-            ensure_analyzed_marks "$strategy_dir"
             verify_inbox_outputs "$strategy_dir" || return 1
         elif [ "$commit_mode" = "isolated-feed" ]; then
             verify_feed_outputs "$strategy_dir" || return 1
@@ -379,68 +376,6 @@ $extra_args"
     notify "KE: $command_file" "Процесс завершён"
 }
 
-
-# Deterministic rescue for missing input marks (issue found 2026-10-20):
-# the model sometimes writes the extraction report but forgets the
-# "[analyzed YYYY-MM-DD]" mark on the source heading in captures.md /
-# fleeting-notes.md. verify_inbox_outputs() then sees a clean git diff on
-# capture paths and blocks publication ("without updated input marks"),
-# which loses a whole night's run. Instead of failing, re-apply the marks
-# from the report's own source_file/source_heading pairs -- a fixed rule,
-# not an LLM opinion: any heading listed in the report is by definition
-# processed this run.
-#
-# Prints one line per applied mark. Tolerates: multiple new reports, marks
-# already present (skip), headings not found (leave alone, reported), and
-# standalone captures/*.md files (status: pending-review -> analyzed).
-ensure_analyzed_marks() {
-    local strategy_dir="$1" report head_path src_file src_heading mark_date today
-    local f rel target_mark
-    today=$(date +%Y-%m-%d)
-    while IFS= read -r -d '' report; do
-        [ -s "$strategy_dir/$report" ] || continue
-        mark_date=$(awk '
-            FNR==1 && $0=="---" {infm=1; next}
-            infm && $0=="---" {infm=0}
-            infm && /^date:[[:space:]]*/ {sub(/^date:[[:space:]]*/,""); gsub(/["[:space:]]/,""); print; exit}
-        ' "$strategy_dir/$report")
-        [ -n "$mark_date" ] || mark_date="$today"
-        while IFS=$'\t' read -r src_file src_heading; do
-            [ -n "$src_file" ] || continue
-            rel="inbox/$src_file"
-            if [[ "$src_file" == captures/* ]]; then
-                # standalone capture file: bump frontmatter status, not a heading
-                local sf="$strategy_dir/inbox/$src_file"
-                if [ -f "$sf" ] && grep -q '^status:[[:space:]]*pending-review' "$sf" 2>/dev/null; then
-                    sed -i "0,/^status:[[:space:]]*pending-review/s//status: analyzed/" "$sf"
-                    log "Auto-marked standalone capture $src_file -> status: analyzed (missing input mark rescue)"
-                fi
-                continue
-            fi
-            if [ ! -f "$strategy_dir/$rel" ]; then
-                log "WARN: ensure_analyzed_marks: source file not found: $rel (report $report)"
-                continue
-            fi
-            if [ -z "$src_heading" ]; then continue; fi
-            # heading may already carry any status mark -> skip
-            if grep -qE "^#{1,6} ${src_heading//./\.}[[:space:]]+\[(analyzed|processed|duplicate|defer)([^[:alnum:]_]|$)" "$strategy_dir/$rel" 2>/dev/null; then
-                continue
-            fi
-            # escape for sed
-            local esc_h="${src_heading//./\.}"
-            esc_h="${esc_h//&/\\&}"
-            if ! grep -qE "^#{1,6} ${esc_h}([[:space:]]|$)" "$strategy_dir/$rel"; then
-                log "WARN: ensure_analyzed_marks: heading not found in $rel: $src_heading (report $report)"
-                continue
-            fi
-            sed -i -E "s/^(#{1,6}) (${esc_h})([[:space:]]*)$/\1 \2 [analyzed ${mark_date}]/" "$strategy_dir/$rel"
-            log "Auto-marked [analyzed $mark_date] in $rel: $src_heading (missing input mark rescue)"
-        done < <(awk -F': ' '
-            /^source_file: / {sf=substr($0,14); gsub(/[[:space:]]+$/,"",sf)}
-            /^source_heading: / {sh=substr($0,17); gsub(/[[:space:]]+$/,"",sh); if(sf!=""){print sf "\t" sh; sf=""; sh=""}}
-        ' "$strategy_dir/$report")
-    done < <(git -C "$strategy_dir" ls-files --others --exclude-standard -z -- inbox/extraction-reports/)
-}
 verify_inbox_outputs() {
     local strategy_dir="$1" report new_reports=0
     while IFS= read -r -d '' report; do
@@ -853,7 +788,7 @@ commit_extractor_changes() {
                         . "$publish_gate"
                         if is_ds_repo_by_origin "$strategy_dir" \
                             && IWE_WORKSPACE="${IWE_ROOT:-$HOME/IWE}" \
-                               publish_commit "$strategy_dir" "$latest_local" normal "extractor $commit_mode $DATE" >> "$LOG_FILE" 2>&1; then
+                               publish_commit "$strategy_dir" "$latest_local" normal "extractor $commit_mode $DATE" "$gov_branch" >> "$LOG_FILE" 2>&1; then
                             log "Published pre-existing extractor commit $latest_local via ds-publish.sh"
                             EXTRACTOR_COMMIT_RESULT="published"
                         elif ! is_ds_repo_by_origin "$strategy_dir" && push_branch "$strategy_dir" >> "$LOG_FILE" 2>&1; then
@@ -960,7 +895,7 @@ commit_extractor_changes() {
     # not inherit that; it needs the real canonical workspace.
     if is_ds_repo_by_origin "$strategy_dir" \
         && IWE_WORKSPACE="${IWE_ROOT:-$HOME/IWE}" \
-           publish_commit "$strategy_dir" "$head_after" normal "extractor $commit_mode $DATE" >> "$LOG_FILE" 2>&1; then
+           publish_commit "$strategy_dir" "$head_after" normal "extractor $commit_mode $DATE" "$gov_branch" >> "$LOG_FILE" 2>&1; then
         log "Published $repo_name via ds-publish.sh (local commit $head_after)"
         EXTRACTOR_COMMIT_RESULT="published"
     elif ! is_ds_repo_by_origin "$strategy_dir" && push_branch "$strategy_dir" >> "$LOG_FILE" 2>&1; then
@@ -1669,9 +1604,10 @@ case "$1" in
         ;;
 
     "git-diff-feed")
-        # WP-247 Ф-MULTI-SOURCE.2: git-diff feeder (cron 06:00/21:00).
+        # WP-247 Ф-MULTI-SOURCE.2: git-diff feeder (cron 09:00/21:00, issue #1252 —
+        # было 06:00/21:00 с окном 12ч, промежутки 9ч/15ч оставляли дыру и дубль).
         # Извлекает кандидатов из git log за окно и пишет ###-блоки в captures-inbox.
-        # Окно: $2 (по умолчанию "12 hours ago").
+        # Окно: $2 (по умолчанию "13 hours ago" — покрывает оба промежутка без дыры).
         #
         # issue #840: this case wrote to the same captures.md as
         # session-close-feed without taking any lock -- a concurrent
@@ -1684,7 +1620,7 @@ case "$1" in
             exit 0
         fi
         trap 'release_inbox_lock "$feed_lock_dir" "git-diff-feed"' EXIT
-        SINCE="${2:-12 hours ago}"
+        SINCE="${2:-13 hours ago}"
         log "Running git-diff FEED (since: $SINCE)"
         run_feed_isolated "git-diff-feed" "$SINCE" "git-diff"
         notify_telegram "git-diff-feed"

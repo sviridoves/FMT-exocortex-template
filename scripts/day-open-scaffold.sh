@@ -747,7 +747,7 @@ render_repo_activity() {
   local since out="" any=0 repo slug n last
   since=$(date -v-2d +%Y-%m-%d 2>/dev/null || date -d "2 days ago" +%Y-%m-%d 2>/dev/null)
   [ -z "$since" ] && { echo "_не удалось вычислить дату фильтра — пропуск._"; return; }
-  out="| Репозиторий | Коммитов (2д) | Последний |\n|---|---|---|\n"
+  printf -v out '| Репозиторий | Коммитов (2д) | Последний |\n|---|---|---|\n'
   # issue #1131: `cut -c1-50` counts bytes under the C/POSIX locale (launchd's
   # EnvironmentVariables carry no LANG/LC_*) and can split a multibyte UTF-8
   # character mid-sequence, corrupting the whole scaffold file for every
@@ -760,19 +760,24 @@ render_repo_activity() {
     n=$(git -C "$repo" log --since="$since 00:00:00" --oneline 2>/dev/null | wc -l | tr -d ' ')
     [ "${n:-0}" -eq 0 ] && continue
     if [ -n "$_resolved_python3" ]; then
-      last=$(git -C "$repo" log -1 --format='%s' 2>/dev/null | "$_resolved_python3" -c "
+      if ! last=$(git -C "$repo" log -1 --format='%s' 2>/dev/null | "$_resolved_python3" -c "
 import sys
 line = sys.stdin.buffer.readline().decode('utf-8', errors='replace').rstrip('\n')
-print(line if len(line) <= 50 else line[:50] + '…')
-")
+result = line if len(line) <= 50 else line[:50] + '\u2026'
+sys.stdout.buffer.write((result + '\n').encode('utf-8'))
+"); then
+        last="_заголовок недоступен: ошибка чтения_"
+      fi
     else
-      last=$(git -C "$repo" log -1 --format='%s' 2>/dev/null | cut -c1-50)
+      # issue #1254: never fall back to byte truncation and corrupt the DayPlan.
+      last="_заголовок недоступен: Python 3 не найден_"
     fi
-    out="${out}| ${slug} | ${n} | ${last} |\n"
+    # Commit subjects are data: %b would interpret literal \\xNN / \\c escapes.
+    printf -v out '%s| %s | %s | %s |\n' "$out" "$slug" "$n" "$last"
     any=1
   done < <(iwe_repo_dirs "$IWE"/*/)
   if [ "$any" = "1" ]; then
-    printf "%b" "$out"
+    printf '%s' "$out"
   else
     echo "Активности в репозиториях за 2 дня нет."
   fi
@@ -1504,7 +1509,7 @@ render_yesterday() {
   # not specified by the day-close protocol, so the grep above is only a secondary signal.
   if [ -z "$dc_committed" ]; then
     local yday_plan="$IWE/${IWE_GOVERNANCE_REPO:-DS-strategy}/archive/day-plans/DayPlan ${YDAY}.md"
-    if [ -f "$yday_plan" ] && grep -qE '<summary><b>Итоги дня</b></summary>|^#{1,6}[[:space:]]+Итоги дня|Завтра начать с' "$yday_plan"; then
+    if [ -f "$yday_plan" ] && grep -qE '<summary><b>Итоги дня</b></summary>|^### Завтра начать с' "$yday_plan"; then
       dc_committed="archived-plan"
     fi
   fi
@@ -1742,7 +1747,7 @@ generated_by: day-open-scaffold.sh (WP-264 Ф2)
 <details>
 <summary><b>Саморазвитие</b></summary>
 
-- **Изучи персональное руководство:** личное руководство (репозиторий \`DS-personal-guide\`, либо \`personal-guide\` у ранних немигрированных пользователей — см. \`/connect-guide\`)
+- **Изучи персональное руководство:** личное руководство (репозиторий \`DS-personal-guide\`, либо \`personal-guide\` у ранних немигрированных пользователей — см. \`/personal-guide-start\`)
 
 $SELF_DEV_BLOCK
 
@@ -1758,7 +1763,6 @@ $SELF_DEV_BLOCK
 ИСКЛЮЧЕНИЕ: РП можно не включать только если его status в inbox/WP-NNN.md явно равен 'done' или 'closed' (или он помечен ✅ в WP-REGISTRY с зачёркиванием). Перед исключением — проверить.
 ЛОВУШКА: «Ф1-Ф3 ✅ закрыто вчера» НЕ означает, что весь РП закрыт. Фаза ≠ РП. Проверить status в inbox/WP-NNN.md.
 ЗАПРЕЩЕНО: включать в план РП, закрытые вчера (есть в «закрыто вчера» + ✅ в REGISTRY). Например, WP-362 закрыт — его нет в плане.
-ЗАПРЕЩЕНО: придумывать номера РП. Колонка '#' = точный WP-ID из JSON-фактов / sweep / priorities; для ad-hoc задач из carry-over без своего WP-ID ставить '—'. Номер WP-N имеет право стоять в строке ТОЛЬКО если этот WP-N открыт (pending/in_progress) и относится к этой же задаче; брать номер «по соседству» из REGISTRY/WeekPlan запрещено (Day Open 2026-10-20: КИСУ получил WP-8 = «Алроса_СУД»).
 
 После priorities.yaml — дополнить из carry-over и SWEEP_WP_LIST теми РП, которых нет в priorities.yaml и которые ещё open.
 Каждый РП из «Обязательные ежедневные РП» ниже (если секция не пуста) ОБЯЗАН быть в таблице — источник уже разрешён детерминированно, не текстом конфига.

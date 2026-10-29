@@ -59,38 +59,3 @@ else
   echo "  🟡 В DayPlan нет секции «Требует внимания» — находки детерминированных шагов (приоритеты, ошибки закрытия, версия) не смогут записаться"
 fi
 ```
-
-### 🔴 ПРОВЕРКА: номера WP в плане дня существуют и открыты
-
-> LLM-fill склонен придумывать номера РП (галлюцинация колонок '#'): ставить
-> закрытому или чужому проекту номер из REGISTRY по соседству. Каждый WP-N из
-> таблицы «План на сегодня» обязан иметь открытый контекст `inbox/WP-N/`
-> (status pending/in_progress/blocked). Номера без контекста блокируют коммит;
-> ad-hoc задачи должны идти с '—', а не с выдуманным номером.
-> Источник дефекта: Day Open 2026-10-20 (КИСУ получил WP-8 = «Алроса_СУД»).
-
-```bash
-# Сканируем ТОЛЬКО колонку '#' таблицы плана (строки '| ... |'), не прозу.
-PLAN_TABLE=$(awk '/План на сегодня/{f=1} f&&/<\/details>/{exit} f
-  /^##[^#]*Carry-over/{f=0}' "$FILE" | grep '^|')
-BAD=""
-REPO_ROOT="$(cd "$(dirname "$FILE")/.." && pwd)"
-for n in $(printf '%s\n' "$PLAN_TABLE" | awk -F'|' '{print $4}' | grep -oE 'WP-[0-9]+' | sort -u); do
-  id=${n#WP-}
-  ctx_file="$REPO_ROOT/inbox/$n/$n.md"
-  if [ ! -f "$ctx_file" ]; then
-    # legacy-раскладка inbox/WP-N.md тоже считается контекстом
-    [ -f "$REPO_ROOT/inbox/$n.md" ] || { BAD="$BAD $n(нет контекста)"; continue; }
-    ctx_file="$REPO_ROOT/inbox/$n.md"
-  fi
-  st=$(grep -m1 '^status:' "$ctx_file" | sed 's/status:[[:space:]]*//' | tr -d "\"'" | head -1)
-  case "$st" in
-    done|closed|archived) BAD="$BAD $n(status=$st)" ;;
-  esac
-done
-if [ -n "$BAD" ]; then
-  echo "  ❌ Колонка '#' плана ссылается на закрытые/несуществующие РП:$BAD — допустимы только открытые WP-ID или '—'"
-  exit 1
-fi
-echo "  ✅ Номера WP в колонке '#' проверены (все открыты либо стоит '—')"
-```

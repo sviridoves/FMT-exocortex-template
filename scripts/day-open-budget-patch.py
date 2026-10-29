@@ -40,46 +40,6 @@ BUDGET_RE = re.compile(
 # детерминированной строки.
 H_CELL_RE = re.compile(r"^(\d+(?:\.\d+)?)h?$")
 
-# RANGES (2026-10-20): LLM-fill и пилот пишут диапазоны («2-3», «2–3h»,
-# «2.5-3 h») и суммы блоков («1+2.5») — прежний regex их не матчил, патч
-# считал это format drift и молча пропускал пересчёт всего бюджета. Для
-# диапазона в сумму берётся верхняя граница (консервативная оценка загрузки
-# портфеля), для суммы — арифметика слагаемых.
-H_RANGE_RE = re.compile(r"^(\d+(?:\.\d+)?)[–—-](\d+(?:\.\d+)?)\s*h?$")
-H_SUM_RE = re.compile(r"^\d+(?:\.\d+)?(?:\s*\+\s*\d+(?:\.\d+)?)+\s*h?$")
-
-
-def _range_or_num(token):
-    """One term of a sum cell: plain number or range (upper bound)."""
-    token = token.strip().rstrip("h").strip()
-    m = H_RANGE_RE.match(token)
-    if m:
-        return float(m.group(2))
-    try:
-        return float(token)
-    except ValueError:
-        return None
-
-
-def parse_h_cell(cell):
-    """Return hours from one 'h'-column cell, or None if not an hour value.
-
-    Plain number ("6", "6h", "0.5h") → its value; range ("2-3", "2–3h") → the
-    upper bound; sum of blocks ("1+2.5") → arithmetic total. Kept separate so
-    sum_plan_hours() and today_scoped_hours() share one parser instead of two
-    drifting regex copies."""
-    m = H_CELL_RE.match(cell)
-    if m:
-        return float(m.group(1))
-    m = H_RANGE_RE.match(cell)
-    if m:
-        return float(m.group(2))
-    if H_SUM_RE.match(cell):
-        parts = [_range_or_num(p) for p in re.split(r"\+", cell.replace("h", ""))]
-        if all(p is not None for p in parts):
-            return sum(parts)
-    return None
-
 ATTENTION_HEADER_RE = re.compile(r"(<summary><b>Требует внимания</b></summary>\s*\n)")
 
 
@@ -130,23 +90,11 @@ def sum_plan_hours(text):
         # Data row
         if h_col is not None and len(cells) > h_col:
             rows_seen += 1
-            hours = parse_h_cell(cells[h_col].strip())
-            if hours is not None:
+            m = H_CELL_RE.match(cells[h_col].strip())
+            if m:
                 rows_matched += 1
-                total += hours
+                total += float(m.group(1))
     return total, in_table, rows_seen, rows_matched
-
-
-def _hours_from_item(item):
-    """Fallback for free-text `today` items without a WP-id: read the trailing
-    hours token ("— 2-3h", "— 1+2.5h"). Ranges use the upper bound, sums are
-    added — same policy as parse_h_cell."""
-    tokens = str(item).replace(",", ".").split()
-    for token in reversed(tokens[-3:]):
-        hours = parse_h_cell(token)
-        if hours is not None:
-            return hours
-    return None
 
 
 def today_scoped_hours(text, today_wps):
@@ -159,28 +107,13 @@ def today_scoped_hours(text, today_wps):
     different question than "how many hours am I actually planning today"
     (14h for the 2 WPs he'd actually marked `today`) — showing only the
     portfolio-wide number left that question unanswered in the file itself.
-    Free-text items without a WP-id (2026-10-20: pilot's `today` is prose,
-    not ids) contribute their own trailing hours instead of silently 0.
     Returns None if today_wps is empty (nothing to scope to)."""
     if not today_wps:
         return None
-    total = 0.0
-    scoped = []  # only items with a WP-id — those are table-scoped below
-    for item in today_wps:
-        if re.search(r"WP-\d+", str(item)):
-            scoped.append(item)
-        else:
-            hours = _hours_from_item(item)
-            if hours is not None:
-                total += hours
-    if not scoped:
-        return total
-    wp_res = []
-    for item in scoped:
-        for wp in re.findall(r"WP-\d+", str(item)):
-            wp_res.append(re.compile(rf"{re.escape(wp)}(?!\d)"))
+    wp_res = [re.compile(rf"WP-{re.escape(str(wp).replace('WP-', '').strip())}(?!\d)") for wp in today_wps]
     in_table = False
     h_col = None
+    total = 0.0
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("|"):
@@ -196,9 +129,9 @@ def today_scoped_hours(text, today_wps):
                 in_table = True
             continue
         if h_col is not None and len(cells) > h_col and any(r.search(stripped) for r in wp_res):
-            hours = parse_h_cell(cells[h_col].strip())
-            if hours is not None:
-                total += hours
+            m = H_CELL_RE.match(cells[h_col].strip())
+            if m:
+                total += float(m.group(1))
     return total
 
 
